@@ -24,6 +24,8 @@ dependencies:
 - megaparsec
 - text
 - template-haskell
+- mtl
+- containers
 
 ghc-options:
 - -Wall
@@ -37,7 +39,9 @@ ghc-options:
 - -Wredundant-constraints
 
 library:
-  source-dirs: src
+  source-dirs: 
+    - src
+    - src\CLP-agda
 
 executables:
   CLP-Parser-exe:
