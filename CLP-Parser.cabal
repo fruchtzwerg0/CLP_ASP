@@ -25,7 +25,6 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
       Parser
       MAlonzo.Code.Agda.Builtin.Bool
       MAlonzo.Code.Agda.Builtin.Char
@@ -78,7 +77,11 @@ library
       MAlonzo.Code.Algebra.Structures.Biased
       MAlonzo.Code.Axiom.Extensionality.Propositional
       MAlonzo.Code.Axiom.UniquenessOfIdentityProofs
-      MAlonzo.Code.CLPZ45Zagda
+      MAlonzo.Code.CLP.Qclp
+      MAlonzo.Code.CLPtermHs
+      MAlonzo.Code.Common.Qsolver
+      MAlonzo.Code.Common.Qtypes
+      MAlonzo.Code.Common.Qutilities
       MAlonzo.Code.Data.Bool
       MAlonzo.Code.Data.Bool.Base
       MAlonzo.Code.Data.Bool.Properties
@@ -157,12 +160,10 @@ library
       MAlonzo.Code.Data.Sum.Properties
       MAlonzo.Code.Data.Sum.Relation.Binary.Pointwise
       MAlonzo.Code.Data.These.Base
-      MAlonzo.Code.Data.Unit
       MAlonzo.Code.Data.Unit.Base
       MAlonzo.Code.Data.Unit.Polymorphic
       MAlonzo.Code.Data.Unit.Polymorphic.Base
       MAlonzo.Code.Data.Unit.Polymorphic.Properties
-      MAlonzo.Code.Data.Unit.Properties
       MAlonzo.Code.Data.Vec.Base
       MAlonzo.Code.Effect.Applicative
       MAlonzo.Code.Effect.Choice
@@ -260,6 +261,10 @@ library
       MAlonzo.Code.Relation.Unary
       MAlonzo.Code.Relation.Unary.PredicateTransformer
       MAlonzo.Code.Relation.Unary.Properties
+      MAlonzo.Code.Term.Qsolver
+      MAlonzo.Code.Term.Qtypes
+      MAlonzo.Code.Views.Qfind
+      MAlonzo.Code.Views.Qfindall
       MAlonzo.RTE
       MAlonzo.RTE.Float
   other-modules:

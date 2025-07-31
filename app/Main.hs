@@ -2,10 +2,15 @@
 module Main (main) where
 
 import Parser
-import MAlonzo.Code.CLPZ45Zagda
+import MAlonzo.Code.CLPtermHs
 
+-- The boolean in the third argument: 
+-- False = Find first result
+-- True  = Find all results
 main :: IO ()
 main = print (evalTermAgda hanoiProgram hanoiQuery False)
+
+-- Some testing programs.
 
 ancestorProgram :: [ClauseTermHs]
 ancestorProgram = [prologProgram|
@@ -79,21 +84,6 @@ appendProgram = [prologProgram|
 appendQuery :: [LiteralTermHs]
 appendQuery = [prologQuestion|
   append(cons(a, cons(b, cons(c, nil))), cons(a, cons(b, cons(c, nil))), O)
-|]
-
-hanoiProgram0 :: [ClauseTermHs]
-hanoiProgram0 = [prologProgram|
-  append(nil, L, L).
-  append(cons(H, T), L2, cons(H, R)) :-
-    append(T, L2, R).
-
-  hanoi(suc(zero), A, B, X, cons(move(A, B), nil)).
-
-  hanoi(suc(N), A, B, C, Moves) :-
-    hanoi(N, A, C, B, Moves).
-
-  hanoiMoves(N, Moves) :-
-    hanoi(N, a, b, c, Moves).
 |]
 
 hanoiProgram :: [ClauseTermHs]

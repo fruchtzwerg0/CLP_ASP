@@ -17,8 +17,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Language.Haskell.TH (Exp, Q)
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import Language.Haskell.TH.Syntax (lift, dataToExpQ)
-import MAlonzo.Code.CLPZ45Zagda
--- === Parser Setup ===
+import MAlonzo.Code.CLPtermHs
 
 type Parser = Parsec Void String
 
