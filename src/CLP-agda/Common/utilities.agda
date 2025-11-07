@@ -119,6 +119,19 @@ maxVarTerm (atomT _ args) = maxVarLogicVars args
 maxVarLogicVars [] = nothing
 maxVarLogicVars (x ∷ xs) = maybeMax (maxVarLogicVarTerm x) (maxVarLogicVars xs)
 
+collectVarsLogicVarTerm : LogicVar (Term LogicVar) → Maybe ℕ
+collectVarsTerm : Term LogicVar → Maybe ℕ
+collectVarsLogicVars : List (LogicVar (Term LogicVar)) → Maybe ℕ
+
+collectVarsLogicVarTerm (var nothing) = []
+collectVarsLogicVarTerm (var (just x)) = [x]
+collectVarsLogicVarTerm (const t) = collectVarsTerm t
+
+collectVarsTerm (atomT _ args) = collectVarsLogicVars args
+
+collectVarsLogicVars [] = []
+collectVarsLogicVars (x ∷ xs) = (collectVarsLogicVarTerm x) ++ (collectVarsLogicVars xs)
+
 {-# TERMINATING #-}
 incrementLogicVarTerm : ℕ → LogicVar (Term LogicVar) → LogicVar (Term LogicVar)
 incrementLogicVarTerm k (var nothing) = var nothing
@@ -167,3 +180,24 @@ maxVarᵥ {clause _} (head :- body) =
 
 maxVarᵥ {listOf _} []       = nothing
 maxVarᵥ {listOf _} (x ∷ xs) = maybeMax (maxVarᵥ x) (maxVarᵥ xs)
+
+
+collectVarsᵥ : {hv : HasVariables} → ⟦ hv ⟧ᵥ → List ℕ
+
+collectVarsᵥ {domainExpr term} = maxVarLogicVarTerm
+
+collectVarsᵥ {expr _} (domainExpr t) = collectVarsᵥ t
+
+collectVarsᵥ {domainConstraint _} (e₁ =ℒ e₂) = collectVarsᵥ (maxVarᵥ e₁) ++ collectVarsᵥ (maxVarᵥ e₂)
+
+collectVarsᵥ {atom _} (mkAtom _ args) =
+  collectVarsᵥ args
+
+collectVarsᵥ {literal _} (atomLiteral a) = collectVarsᵥ a
+collectVarsᵥ {literal _} (𝓁Literal ℓ)    = collectVarsᵥ ℓ
+
+collectVarsᵥ {clause _} (head :- body) =
+  collectVarsᵥ (maxVarᵥ head) ++ collectVarsᵥ (maxVarᵥ body)
+
+collectVarsᵥ {listOf _} []       = []
+collectVarsᵥ {listOf _} (x ∷ xs) = collectVarsᵥ (maxVarᵥ x) ++ collectVarsᵥ (maxVarᵥ xs)

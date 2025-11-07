@@ -38,18 +38,20 @@ data Expr : 𝒞 → Set where
 -- _*_ : Expr real → Expr real → Expr real
 -- _/_ : Expr real → Expr real → Expr real
 
--- Abstract domain constraint type. Every domain has constraint =ℒ, Term has no additional ones.
+-- Abstract domain constraint type. Every domain has constraints =ℒ and ≠ℒ, Term has no additional ones.
 data ℒ : 𝒞 → Set where
   _=ℒ_ : {c : 𝒞} → Expr c → Expr c → ℒ c
+  _≠ℒ_ : {c : 𝒞} → Expr c → Expr c → ℒ c
 -- _≤ℒ_ : Expr real → Expr real → ℒ real
 -- _≥ℒ_ : Expr real → Expr real → ℒ real
 -- _<ℒ_ : Expr real → Expr real → ℒ real
 -- _>ℒ_ : Expr real → Expr real → ℒ real
 
-data Atom (c : 𝒞) : Set where
-  mkAtom : String
-       → List (Expr c)
-       → Atom c
+record Atom (c : 𝒞) : Set where
+  constructor mkAtom
+  field
+    functor : String
+    args : List (Expr c)
 
 data Literal (c : 𝒞) : Set where
   atomLiteral : Atom c → Literal c
@@ -58,10 +60,11 @@ data Literal (c : 𝒞) : Set where
 -- Clause type. Either rule or fact. 
 -- If the list in the second argument is empty, it is a fact.
 -- (empty rules and facts are semantically the same, the special syntax for facts is only sugar).
-data Clause (c : 𝒞) : Set where
-  _:-_ : Atom c
-       → List (Literal c)
-       → Clause c
+record Clause (c : 𝒞) : Set where
+  constructor _:-_
+  field 
+    head : Atom c
+    body : List (Literal c)
 
 -- Generic type for Substitutions (Output of the solver).
 -- Extensive domain type extended by LogicVar.
