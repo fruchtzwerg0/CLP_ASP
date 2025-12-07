@@ -81,15 +81,17 @@ buildNegatedBody : {c : 𝒞} → ℕ → List (Literal c) → List (Literal c)
 buildNegatedBody (suc n) lit = negateLiteral lit ∷ buildNegatedBody n
 buildNegatedBody (zero) lit = lit ∷ []
 
+makeFreeVarArgs : List ℕ → ℕ → List ℕ
+makeFreeVarArgs l (suc x) = (just ∘ suc ∘ maxVarᵥ) l ∷ makeFreeVarArgs l x
+makeFreeVarArgs l zero = []
+
 applyDeMorgan : {c : 𝒞} → ℕ → Clause c → List (Clause c)
-applyDeMorgan n (mkAtom name args :- body) =
-  unfoldr (λ { suc x → not (mkAtom (getNextFreeClauseName n name) (unfoldr (λ x → ((just ∘ suc ∘ maxVarᵥ) x , ((just ∘ suc ∘ maxVarᵥ) x) ∷ x)) (collectVarsForForAll (mkAtom name args :- body)))) :-  (reverse ∘ buildNegatedBody (length body - x)) body }) (length body)
+applyDeMorgan n (mkAtom name args :- body) = let forAllVars = collectVarsForForAll (mkAtom name args :- body)
+  in unfoldr (λ { suc x → not (mkAtom (getNextFreeClauseName n name) ((makeFreeVarArgs forAllVars (length args)) ++ forAllVars)) :-  (reverse ∘ buildNegatedBody (length body - x)) body }) (length body)
 
 buildForAll : {c : 𝒞} → List ℕ → List ℕ → String → Clause c
 buildForAll (v ∷ vars) acc name = atomLiteral (mkAtom "forall" (var v ∷ buildForall vars (v ∷ acc) name ∷ []))
 buildForAll [] acc name = atomLiteral (not mkAtom name (map var acc))
-
-
 
 computeDual : {c : 𝒞} → List (Clause c) → List (Clause c)
 computeDual ((mkAtom name args :- body) ∷ xs) = 
@@ -97,14 +99,26 @@ computeDual ((mkAtom name args :- body) ∷ xs) =
   foldr
     (λ {(suc n , (mkAtom name args :- body)) x → 
       (n , if (_≡ᵇ_ 0 ∘ length ∘ collectVarsForForAll) (mkAtom name args :- body)
-           then applyDeMorgan ((suc ∘ length) xs - n)
-           else (not (mkAtom name (map (suc ∘ maxVarᵥ) (collectVarsForForAll (mkAtom name args :- body)))) :- 
+           then applyDeMorgan ((suc ∘ length) xs - n) (mkAtom name args :- body)
+           else (not (mkAtom name (makeFreeVarArgs (collectVarsForForAll (mkAtom name args :- body)) (length args))) :- 
               buildForAll (collectVarsForForAll (mkAtom name args :- body)) [] (getNextFreeClauseName ((suc ∘ length) xs - n) name))
               ∷ applyDeMorgan ((suc ∘ length) xs - n)) (mkAtom name args :- body ++ map 𝓁Literal (makeParamUnificationExplicit args))} )
            (zero , [])
            ((mkAtom name args :- body) ∷ xs)
 
-cForall = ?
+cForall : 
+  {c : 𝒞}
+  → ℕ
+  → List (Clause c)
+  → Literal c
+  → List (ℒ c)
+  → Subst c
+  → Maybe (Subst c)
+cForall v program goal constraints subst with eval program goal constraints false subst
+... | nothing = nothing
+... | just (newSubst , newConstraints) with (solve (constraints ++ (negate newConstraints)) []) 
+... | just _ = cForall v program goal (constraints ++ (negate newConstraints)) subst
+... | nothing = just []
 
 -- Generic evaluation function, terminating required because this requires Turing-completeness
 {-# TERMINATING #-}
