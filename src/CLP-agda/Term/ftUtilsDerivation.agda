@@ -13,7 +13,7 @@ open import Data.Nat
 open import Data.Bool
 import Data.Vec.Base as Vec
 open import Agda.Builtin.String
-import Data.String   as String hiding (length)
+import Data.String   as String hiding (length; _++_)
 open import Data.List
 open import Data.Char
 open import Data.Maybe as Maybe
@@ -27,18 +27,17 @@ record FTUtils {l} (A : Set l) : Set l where
     functor : A → String
     getNat : A → Maybe ℕ
     varName : A → Maybe ℕ
-    occurs : A → ℕ → Bool
-    apply : A → A
-    breakArgs : A → List A
+    occurs : ℕ → A → Bool
+    increment : ℕ → A → A
+    collectVars : A → List ℕ
 open FTUtils ⦃...⦄ public
 
 -- varName
 -- functor
--- breakArgs
+-- zipMatch
 -- applyᵥ
 -- occursᵥ
 -- incrementᵥ
--- maxVarᵥ
 -- collectVarsᵥ
 
 beginsWithList : List Char → List Char → Bool
@@ -187,17 +186,51 @@ module _
         occursCon ._ (pi-irr ⦃ _ ⦄ ⦃ H ⦄) (s , x) a n
           = occursCon _ H x a n
         occursCon ._ (pi-rel ⦃ S ⦄ ⦃ H ⦄) (s , x) a n
-          = occurs ⦃ S ⦄ s n ∨ occursCon _ H x a n
+          = occurs ⦃ S ⦄ n s ∨ occursCon _ H x a n
         occursCon ._ (prod {A} {B} ⦃ HA ⦄ ⦃ HB ⦄) (xa , xb) (aa , ab) n
           = occursIndArg A xa aa n ∨ occursCon B HB xb ab n
 
     occurs′ : (x : A′ (p , i)) → ℕ → Bool
     occurs′ x = occurs-wf x (wf x)
 
+    collectVarsData-wf : (x : ⟦ D ⟧Data A′ (p , i))
+                → AllDataω Acc D x
+                → List ℕ
+
+    collectVars-wf : (x : A′ (p , i)) → Acc x → List ℕ
+    collectVars-wf x (acc a) = collectVarsData-wf (split x) a -- (varName-wf x (acc a) >>= (λ { nothing → []; just x → x ∷ [] })) ++ collectVarsData-wf (split x) a
+
+    collectVarsData-wf (k , x) a = collectVarsCon (lookupCon D k) (lookupHelper helpers k) x a
+      where
+        collectVarsIndArg : (C : ConDesc P V I)
+                     (x : ⟦ C ⟧IndArg A′ (p , v))
+                   → AllIndArgω Acc C x
+                   → List ℕ
+        collectVarsIndArg (var _) x a = collectVars-wf x a
+        collectVarsIndArg (π ia S C) x a = []
+        collectVarsIndArg (A ⊗ B) (xa , xb) (aa , ab)
+          = collectVarsIndArg A xa aa ++ collectVarsIndArg B xb ab
+
+        collectVarsCon : (C : ConDesc P V I)
+                  (H : ConHelper p C)
+                  (x : ⟦ C ⟧Con A′ (p , v , i))
+                → AllConω Acc C x
+                → List ℕ
+        collectVarsCon ._ var refl tt = []
+        collectVarsCon ._ (pi-irr ⦃ _ ⦄ ⦃ H ⦄) (s , x) a
+          = collectVarsCon _ H x a
+        collectVarsCon ._ (pi-rel ⦃ S ⦄ ⦃ H ⦄) (s , x) a
+          = collectVars ⦃ S ⦄ s ++ collectVarsCon _ H x a
+        collectVarsCon ._ (prod {A} {B} ⦃ HA ⦄ ⦃ HB ⦄) (xa , xb) (aa , ab)
+          = collectVarsIndArg A xa aa ++ collectVarsCon B HB xb ab
+
+    collectVars′ : (x : A′ (p , i)) → List ℕ
+    collectVars′ x = collectVars-wf x (wf x)
+
   deriveFTUtils : ∀ {p} ⦃ SH : FTUtilsHelpers p ⦄ {i} → FTUtils (A′ (p , i))
   deriveFTUtils ⦃ SH ⦄ .functor = functor′ SH
   deriveFTUtils ⦃ SH ⦄ .getNat = getNat′ SH
   deriveFTUtils ⦃ SH ⦄ .varName = varName′ SH
-  deriveFTUtils ⦃ SH ⦄ .occurs = occurs′ SH
-  deriveFTUtils ⦃ SH ⦄ .apply = id
-  deriveFTUtils ⦃ SH ⦄ .breakArgs = λ { x → x ∷ [] }
+  deriveFTUtils ⦃ SH ⦄ .occurs = λ { x y → occurs′ SH y x }
+  deriveFTUtils ⦃ SH ⦄ .increment = λ { _ → id }
+  deriveFTUtils ⦃ SH ⦄ .collectVars = collectVars′ SH

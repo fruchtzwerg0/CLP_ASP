@@ -15,11 +15,20 @@ open import Relation.Nullary
 open import Relation.Nullary.Decidable as Decidable
 open import Relation.Binary.PropositionalEquality
 
+open import Agda.Builtin.Reflection hiding (Clause)
+open import Term.domainUniverseGeneration hiding (_>>=_; _>>_)
+
 open import Term.ftUtilsDerivation
 open import Term.types
+open import Term.unifyDisunify
+open import Term.solverScheduler
 
-natD : HasDesc ℕ
-natD = deriveDesc ℕ
+-- Domain Types
+
+data BoolLogic : Set where
+  true : BoolLogic
+  false : BoolLogic
+  varBool : ℕ → BoolLogic
 
 data ℕLogic : Set where
   zero : ℕLogic
@@ -42,6 +51,8 @@ open LogicTypes
 infixl 21 _∶_
 infixr 20 _∷_
 
+-- Constraint Types
+
 data ℒℕ : Set where
   _<ℒℕ_ : ℕLogic → ℕLogic → ℒℕ
 
@@ -57,23 +68,64 @@ pattern _≥List_ x y = (dual (x <ℒList y))
 infix 200 _<ℒℕ_
 infix 200 _<ℒList_
 
-data Index : Set where
-  NatI  : Index
-  ×I : (i : Index) → Index
-  ListI : (i : Index) → Index
+-- Atom Type
 
-⟦_⟧ : Index → Set
-⟦ NatI ⟧    = ℕLogic
-⟦ ×I i ⟧    = ×Logic ⟦ i ⟧
-⟦ ListI i ⟧ = ListLogic ⟦ i ⟧
+data Functor (A : Set) : Set where
+  not : Functor A → Functor A
+  dupli : ListLogic A → ListLogic (×Logic A) → Functor A
+  fforall : (i : Index) → ⟦ i ⟧ → Functor → Functor
+  true : Functor A
+  false : Functor A
 
-⟦_⟧ℒ : Index → Set
-⟦ NatI ⟧ℒ    = ℒℕ
-⟦ ×I i ⟧ℒ    = ⊤
-⟦ ListI i ⟧ℒ = ℒList ⟦ i ⟧
+-- Universe
+
+-- list of names you want in the universe
+myTypes : List Name
+myTypes = quote BoolLogic ∷ quote ℕLogic ∷ quote ×Logic ∷ quote ListLogic ∷ []
+
+-- the top-level declaration
+-- unquoteDecl data My𝒞 constructor Bool𝒞 Nat𝒞 ×𝒞 List𝒞 = makeUniverse myTypes
+
+data My𝒞 : Set where
+  Bool𝒞  : My𝒞
+  Nat𝒞  : My𝒞
+  ×𝒞 : (i : My𝒞) → My𝒞
+  List𝒞 : (i : My𝒞) → My𝒞
+{-
+newConstraintDomainSystem (withAtom Functor)
+ ((Nat withConstraints (_<N_ and _<=N_ and empty)) and
+ (List withConstraints (_<List_ and _<=List_ and empty)) and
+ (_×_ withConstraints empty) and
+ empty)
+-}
+⟦_⟧ : My𝒞 → Set
+⟦ Bool𝒞 ⟧    = BoolLogic
+⟦ Nat𝒞 ⟧    = ℕLogic
+⟦ ×𝒞 i ⟧    = ×Logic ⟦ i ⟧
+⟦ List𝒞 i ⟧ = ListLogic ⟦ i ⟧
+
+⟦_⟧ℒ : My𝒞 → Set
+⟦ Bool𝒞 ⟧ℒ    = ⊤
+⟦ Nat𝒞 ⟧ℒ    = ℒℕ
+⟦ ×𝒞 i ⟧ℒ    = ⊤
+⟦ List𝒞 i ⟧ℒ = ℒList ⟦ i ⟧
+
+-- Desc and Instances
+
+natD : HasDesc ℕ
+natD = deriveDesc ℕ
+
+indexD : HasDesc My𝒞
+indexD = deriveDesc My𝒞
+
+instance  decMy𝒞 : DecEq My𝒞
+          decMy𝒞 = deriveDecEq indexD
 
 natLD : HasDesc ℕLogic
 natLD = deriveDesc ℕLogic
+
+boolD : HasDesc BoolLogic
+boolD = deriveDesc BoolLogic
 
 ×D : HasDesc ×Logic
 ×D = deriveDesc ×Logic
@@ -81,29 +133,18 @@ natLD = deriveDesc ℕLogic
 listD : HasDesc ListLogic
 listD = deriveDesc ListLogic
 
-data Functor (A : Set) : Set where
-  not : Functor A → Functor A
-  dupli : ListLogic A → ListLogic (×Logic A) → Functor A
-  idC : A → A → Functor A
-  true : Functor A
-  false : Functor A
+natLCD : HasDesc ℒℕ
+natLCD = deriveDesc ℒℕ
 
-validate : ∀ {A} → Where → AbstractOrConcrete → Functor A → Set
-validate _ abstr (not _) = ⊤
-validate bodyOfRule concr (not _) = ⊤
-validate _ _ (dupli _ _) = ⊤
-validate bodyOfRule _ true = ⊤
-validate _ _ false = ⊤
-validate _ _ _ = ⊥
+listLCD : HasDesc ℒList
+listLCD = deriveDesc ℒList
 
 functorD : HasDesc Functor
 functorD = deriveDesc Functor
 
-indexD : HasDesc Index
-indexD = deriveDesc Index
-
-instance  decIndex : DecEq Index
-          decIndex = deriveDecEq indexD
+instance  makeVarBool : MakeVar BoolLogic
+          makeVarBool .fresh = varBool
+          makeVarBool .new = varBool 0
 
 instance  makeVarℕ : MakeVar ℕLogic
           makeVarℕ .fresh = varℕ
@@ -120,6 +161,9 @@ instance  makeVar× : ∀ {A} → MakeVar (×Logic A)
 instance  unifyDisunifyNat : FTUtils ℕ
           unifyDisunifyNat = deriveFTUtils natD
 
+instance  unifyDisunifyBool : FTUtils BoolLogic
+          unifyDisunifyBool = deriveFTUtils boolD
+
 instance  unifyDisunifyNatL : FTUtils ℕLogic
           unifyDisunifyNatL = deriveFTUtils natLD
 
@@ -132,67 +176,65 @@ instance  unifyDisunify× : ∀ {A} → ⦃ FTUtils A ⦄ → FTUtils (×Logic A
 instance  ftUtilsFunctor : ∀ {A} → ⦃ FTUtils A ⦄ → FTUtils (Functor A)
           ftUtilsFunctor = deriveFTUtils functorD
 
-getPermission' : (i : Index)
-               → Σ Index (ℒ ∘ ⟦_⟧)
-               → Maybe ((ℒ ∘ ⟦_⟧) i)
-getPermission' x (_,_ b a ) with x ≟ b
-... | no _ = nothing
-... | (yes refl) = just a
+instance  ftUtilsNatCns : FTUtils ℒℕ
+          ftUtilsNatCns = deriveFTUtils natLCD
 
-getPermissionCustom' : (i : Index)
-               → Σ Index (Dual ∘ ⟦_⟧ℒ)
-               → Maybe ((Dual ∘ ⟦_⟧ℒ) i)
-getPermissionCustom' x (_,_ b a ) with x ≟ b
-... | no _ = nothing
-... | (yes refl) = just a
+instance  ftUtilsListCns : ∀ {A} → ⦃ FTUtils A ⦄ → FTUtils (ℒList A)
+          ftUtilsListCns = deriveFTUtils listLCD
 
-instance  permission : Permission Index ⟦_⟧ ⟦_⟧ℒ
-          permission .getPermission = getPermission'
-          permission .getPermissionCustom = getPermissionCustom'
+zipValue : (i : My𝒞) → ⟦ i ⟧ → ⟦ i ⟧ → Maybe (List (Σ My𝒞 (ℒ ∘ ⟦_⟧)))
+zipValue (List𝒞 _) [] [] = just []
+zipValue (List𝒞 i) (x ∷ xs) (y ∷ ys) = just ((i , x =ℒ y) ∷ (List𝒞 i , xs =ℒ ys) ∷ [])
+zipValue _ _ _ = nothing
 
-breakArgss : (i : Index) → ⟦ i ⟧ → ⟦ i ⟧ → Maybe (List (Σ Index (ℒ ∘ ⟦_⟧)))
-breakArgss (ListI _) [] [] = just []
-breakArgss (ListI i) (x ∷ xs) (y ∷ ys) = just ((i , x =ℒ y) ∷ (ListI i , xs =ℒ ys) ∷ [])
-breakArgss _ _ _ = nothing
-{-
-breakArgsss : (i : Index) → Functor ⟦ i ⟧ → Functor ⟦ i ⟧ → Maybe (List (Σ Index (ℒ ∘ ⟦_⟧)))
-breakArgsss i (dupli x y) (dupli a b) = just ((ListI i , x =ℒ a) ∷ (ListI (×I i) , y =ℒ b) ∷ [])
+zipAtom : (i : My𝒞) → Functor ⟦ i ⟧ → Functor ⟦ i ⟧ → Maybe (List (Σ My𝒞 (ℒ ∘ ⟦_⟧)))
+zipAtom i (dupli x y) (dupli a b) = just ((List𝒞 i , x =ℒ a) ∷ (List𝒞 (×𝒞 i) , y =ℒ b) ∷ [])
+zipAtom i _ _ = nothing
 
-unifyDisunify : 
-  {I B : Set}
-  {Code : I → Set} 
-  {Constraint : I → Set} 
-  → ⦃ Permission I Code Constraint ⦄ 
-  → (i : I) 
-  → ⦃ FTUtils (Code i) ⦄ 
-  → List ((Σ I (ℒ ∘ Code)) ⊎ B)
-  → (Maybe ∘ List) (List ((Σ I (ℒ ∘ Code)) ⊎ B))
-unifyDisunify witness ((inj₁ x) ∷ xs) with getPermission witness x
-... | just (a =ℒ b) = {!   !}
-... | just (a ≠ℒ b) = {!   !}
-... | nothing = {!   !}
-unifyDisunify witness y = {!   !}
+abstractListSolver : 
+  ∀ {𝒞 Code Constraint}
+  → (c : 𝒞) 
+  → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
+  → List ((ℒ ∘ ListLogic) (Code c) ⊎ (Dual ∘ ℒList) (Code c))
+  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+abstractListSolver c _ ((inj₁ x) ∷ xs) = {!   !}
+abstractListSolver c _ ((inj₂ x) ∷ xs) = {!   !}
+abstractListSolver c _ [] = {!   !}
 
-chooseSolver :
-  (i : Index)
-  → List ((Σ Index (ℒ ∘ ⟦_⟧)) ⊎ (Σ Index (Dual ∘ ⟦_⟧ℒ))) 
-  → (Maybe ∘ List) (List ((Σ Index (ℒ ∘ ⟦_⟧)) ⊎ (Σ Index (Dual ∘ ⟦_⟧ℒ))))
-chooseSolver NatI = unifyDisunify NatI
---chooseSolver (×I x) = unifyDisunify (×I x)
---chooseSolver (ListI x) = unifyDisunify (ListI x)
+concreteListNatSolver : 
+  ∀ {𝒞 Code Constraint}
+  → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
+  → List ((ℒ ∘ ListLogic) ℕLogic ⊎ (Dual ∘ ℒList) ℕLogic)
+  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+concreteListNatSolver _ ((inj₁ x) ∷ xs) = {!   !}
+concreteListNatSolver _ ((inj₂ x) ∷ xs) = {!   !}
+concreteListNatSolver _ [] = {!   !}
 
-instance  solver : Solver Index ⟦_⟧ ⟦_⟧ℒ
-          solver .solve = chooseSolver
--}
+instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          solver .solve (List𝒞 Nat𝒞) = concreteListNatSolver
+          solver .solve (List𝒞 x) = abstractListSolver x
+          solver .solve = unifyDisunify
+
+instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          scheduler .schedule = defaultSchedule ⦃ decMy𝒞 ⦄ ⦃ solver ⦄
+
+validate : ∀ {A} → Where → AbstractOrConcrete → Functor A → Set
+validate _ abstr (not _) = ⊤
+validate bodyOfRule concr (not _) = ⊤
+validate _ _ (dupli _ _) = ⊤
+validate bodyOfRule _ true = ⊤
+validate _ _ false = ⊤
+validate _ _ _ = ⊥
+
 module program where
   open Term.types
 
   -- ---------------------------------------------------------------------
   -- Example program
-  dupliProgram : (i : Index) → ⦃ MakeVar ⟦ i ⟧ ⦄ → Clause (Functor ⟦ i ⟧) validate Index ⟦_⟧ℒ
+  dupliProgram : (i : My𝒞) → ⦃ FTUtils ⟦ i ⟧ ⦄ → ⦃ MakeVar ⟦ i ⟧ ⦄ → Clause (Functor ⟦ i ⟧) validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
   dupliProgram i = do
 
-    not (dupli [] []) •
+    dupli [] [] •
 
     X ← new
     Xs ← new
@@ -200,8 +242,18 @@ module program where
 
     dupli (X ∷ Xs) (X ∶ X ∷ Ys) :-
       dupli Xs Ys ∧
-      idC X X ∧
-      (ListI i , Xs ≥List Xs) ↼•
-      -- dupli Xs Ys •
+      (◇ (List𝒞 i :-: (Xs ≥List Xs))) ↼•
+      --◇ :-: Xs ≥List Xs ↼•
+  -- ---------------------------------------------------------------------
+  -- Example program
+  dupliNatProgram : Clause (Functor ℕLogic) validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  dupliNatProgram = do
+    dupliProgram Nat𝒞
 
-  test = applyVars (dupliProgram NatI) 0
+  -- ---------------------------------------------------------------------
+  -- Example program
+  dupliBoolProgram : Clause (Functor BoolLogic) validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  dupliBoolProgram = do
+    dupliProgram Bool𝒞
+
+  test = applyVars (dupliProgram Nat𝒞) 0

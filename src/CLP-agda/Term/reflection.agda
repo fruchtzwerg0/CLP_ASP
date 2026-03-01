@@ -16,30 +16,29 @@ open import Agda.Builtin.Sigma
 
 open import Agda.Primitive
 
-collectSlotTypes : Name → Term → TC (List Name)
-collectSlotTypes = {!   !}
+open import Agda.Builtin.Reflection
 
-mMap : ∀ {A B} → (A → TC B) → List A → TC (List B)
-mMap f [] = returnTC []
-mMap f (x ∷ xs) = do
-  res <- f x
-  rest <- mMap f xs
-  returnTC (res ∷ rest)
+validateType : Name → TC ⊤
+validateType n = do
+  def ← getDefinition n
+  case def of
+    data-type _ _ → pure tt
+    _ → typeError (strErr "Not a datatype: " ∷ nameErr n ∷ [])
 
-deriveDomain : Name → Name → TC ⊤
-deriveDomain rootName slotName = do
-  domainDescriptor <- freshName "DomainDescriptor"
-  declareData domainDescriptor 0 (quoteTerm Set)
-  domainNames <- collectSlotTypes domainDescriptor (quoteTerm rootName)
-  domainDescriptorConstructors <- (mMap (λ name → do
-    descriptorConstructor <- freshName (primStringAppend (showName name) "Descriptor") 
-    returnTC (descriptorConstructor , (def domainDescriptor []))) domainNames)
-  defineData domainDescriptor domainDescriptorConstructors
-  domain <- freshName "Domain"
-  declareData domain 0 (quoteTerm Set)
-  --defineData domain ()
+macro
+  newConstraintDomainSystem : Term → TC ⊤
+  newConstraintDomainSystem specTerm = do
 
-data Fin : Nat → Set where
-  zero : ∀ {n} → Fin (suc n)
-  suc  : ∀ {n} → Fin n → Fin (suc n)
-  catchall : ∀ {n} → Fin n
+    spec ← evalSpec specTerm
+
+    validateAtom spec
+    validateAllTypes spec
+
+    forM (types spec) generateLogicType
+    forM (types spec) generateConstraintType
+
+    generateIndexType spec
+    generateInterpretation spec
+    generateInstances spec
+
+    unify (quoteTerm tt) (quoteTerm tt)

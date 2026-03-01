@@ -2,15 +2,20 @@ module Term.types where
 
 open import Data.Bool hiding (not ; _∧_)
 open import Data.Char
-open import Data.String
+open import Data.String hiding (head; _++_)
 open import Data.Nat
 open import Data.Maybe hiding (_>>=_)
-open import Data.List
+open import Data.List hiding (head)
 open import Data.Product
 open import Data.Sum
 
-open import Term.chatGpt
 open import Term.ftUtilsDerivation
+
+open import Relation.Nullary
+open import Relation.Nullary.Decidable as Decidable
+open import Relation.Binary.PropositionalEquality
+
+open import Generics
 
 open import Function.Base
 open import Relation.Binary.PropositionalEquality hiding ([_])
@@ -40,46 +45,97 @@ data Where : Set where
   headOfRule : Where
   bodyOfRule : Where
 
-data AbstractOrConcrete : Set where
-  concr : AbstractOrConcrete
-  abstr : AbstractOrConcrete
+record _×ᵢ_ (A : Set) (B : Set) : Set where
+  constructor _<ᵢ
+  field
+    code    : A
+    ⦃ inst ⦄ : FTUtils B
+open _×ᵢ_ public
+
+record Σᵢ (A : Set) (B : A → Set) (Code : A → Set) (Cns : A → Set) : Set where
+  constructor _:-:_
+  field
+    code   : A
+    value : B code
+    ⦃ instcode ⦄ : FTUtils (Code code)
+    ⦃ instcns ⦄ : FTUtils (Cns code)
+open Σᵢ public
+
+data Literal 
+  (A : Set)
+  (𝒞 : Set) 
+  (Code : (𝒞 → Set))
+  (Constraint : (𝒞 → Set)) : Set where
+  atom : A → ⦃ FTUtils A ⦄ → Literal A 𝒞 Code Constraint
+  constraint : (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint) → Literal A 𝒞 Code Constraint
 
 data Body 
   (A : Set) 
-  (val : AbstractOrConcrete → A → Set)
-  (Index : Set) 
-  (Constraint : (Index → Set)) : Set where
-  end  : (functor : A) → val concr functor → Body A val Index Constraint
-  endst  : (Σ Index (Dual ∘ Constraint)) → Body A val Index Constraint
-  cons : (functor : A) → val concr functor → Body A val Index Constraint → Body A val Index Constraint
-  constr : (Σ Index (Dual ∘ Constraint)) → Body A val Index Constraint → Body A val Index Constraint
+  (val : A → Set)
+  (𝒞 : Set) 
+  (Code : (𝒞 → Set))
+  (Constraint : (𝒞 → Set)) : Set where
+  end  : ⦃ FTUtils A ⦄ → (atom : A) → val concr atom → Body A val 𝒞 Code Constraint
+  endst  : (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint) 
+            → Body A val 𝒞 Code Constraint
+  cons : ⦃ FTUtils A ⦄ → (atom : A) → val concr atom → Body A val 𝒞 Code Constraint → Body A val 𝒞 Code Constraint
+  constr : (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)  
+            → Body A val 𝒞 Code Constraint → Body A val 𝒞 Code Constraint
 
+toLiteralList : ∀ {Atom val 𝒞 Code Constraint} → Body Atom val 𝒞 Code Constraint → List (Literal Atom 𝒞 Code Constraint)
+toLiteralList (end a _) = atom a ∷ []
+toLiteralList (endst c) = constraint c ∷ []
+toLiteralList (cons a _ xs) = atom a ∷ toLiteralList xs
+toLiteralList (constr c xs) = constraint c ∷ toLiteralList xs
+
+pattern □_ x = inj₁ x
+pattern ◇_ x = inj₂ x
 pattern _• x = end x _
 pattern _∧_ x y = cons x _ y
 pattern _↼• x = endst x
 pattern _↼_ x y = constr x y
 
+record ClauseI
+  (Atom : Set) 
+  (𝒞 : Set) 
+  (Code : (𝒞 → Set))
+  (Constraint : (𝒞 → Set)) : Set where
+  constructor _:--_
+  field
+    head : Atom
+    body : List (Literal Atom 𝒞 Code Constraint)
+    ⦃ inst ⦄ : FTUtils Atom
+
 data Clause 
   (A : Set) 
-  (val : Where → AbstractOrConcrete → A → Set)
-  (Index : Set) 
-  (Constraint : (Index → Set)) : Set₁ where
-  fact : (functor : A)
-       → val headOfRule concr functor
-       → Clause A val Index Constraint
+  (val : Where → A → Set)
+  (𝒞 : Set) 
+  (Code : (𝒞 → Set))
+  (Constraint : (𝒞 → Set)) : Set₁ where
+  fact : ⦃ FTUtils A ⦄ → (atom : A)
+       → val headOfRule concr atom
+       → Clause A val 𝒞 Code Constraint
 
-  rule : (functor : A)
-       → val headOfRule concr functor
-       → Body A (val bodyOfRule) Index Constraint
-       → Clause A val Index Constraint
+  rule : ⦃ FTUtils A ⦄ → (atom : A)
+       → val headOfRule concr atom
+       → Body A (val bodyOfRule) 𝒞 Code Constraint
+       → Clause A val 𝒞 Code Constraint
 
-  _>>_ : Clause A val Index Constraint → Clause A val Index Constraint → Clause A val Index Constraint
+  _>>_ : Clause A val 𝒞 Code Constraint → Clause A val 𝒞 Code Constraint → Clause A val 𝒞 Code Constraint
 
-  _>>=_ : {B : Set} → ⦃ MakeVar B ⦄ → B → (B → Clause A val Index Constraint) → Clause A val Index Constraint
+  _>>=_ : {B : Set} → ⦃ MakeVar B ⦄ → B → (B → Clause A val 𝒞 Code Constraint) → Clause A val 𝒞 Code Constraint
+
+toIntern : ∀ {Atom val 𝒞 Code Constraint} → Clause Atom val 𝒞 Code Constraint → List (ClauseI Atom 𝒞 Code Constraint)
+toIntern (fact a _) = a :-- [] ∷ []
+toIntern (rule a _ xs) = a :-- toLiteralList xs ∷ []
+toIntern (cl0 >> cl1) = toIntern cl0 ++ toIntern cl1
+toIntern _ = []
 
 pattern _• x = fact x _
 pattern _:-_ x y = rule x _ y
 
+infix 50 □_
+infix 50 ◇_
 infix 60 _•
 infix 60 _↼•
 infixr 50 _∧_
@@ -88,9 +144,9 @@ infixr 50 _↼_
 infix 30 _:-_
 
 applyVars
-  : ∀ {A val Index Constraint}
-  → Clause A val Index Constraint
-  → ℕ → ℕ × Clause A val Index Constraint
+  : ∀ {A val 𝒞 Code Constraint}
+  → Clause A val 𝒞 Code Constraint
+  → ℕ → ℕ × Clause A val 𝒞 Code Constraint
 applyVars (fact f p)     c = c , fact f p
 applyVars (rule f p b)   c = c , rule f p b
 applyVars (c₁ >> c₂)     c =
@@ -105,49 +161,56 @@ applyVars (_>>=_ {B} x k) c =
       (c'' , r) = applyVars result c'
   in c'' , r
 
---foldExprD = deriveFold exprD
--- ((3 ⦊ nil) ×× ( 4 ⦊ 6 ⦊ (generic 5)))
-{-
-apply : ∀ {A} → ⦃ FTUtils A ⦄ → Expr A → ℕ → Expr A → Expr A
-apply sub x = foldExprD _××_ nil atomic _⦊_ (λ { y → if x ≡ᵇ y then sub else generic y })
-
-breakArgs : ∀ {A} → ⦃ FTUtils A ⦄ → Expr A → List (Expr A)
-breakArgs = proj₂ ∘ (foldExprD 
-          (λ {(x , _) (y , _) → (_××_ x y , (x ∷ y ∷ []))})
-          (nil , [])
-          (λ { y → (atomic y , []) })
-          (λ {(x , _) (y , _) → (_⦊_ x y , (x ∷ y ∷ []))})
-          (λ { y → (generic y , []) }))
--}
-
-{-
-Generics.Reflection.badconvert
-(Generics.Reflection.mkHD
- ((var (λ PV → tt) ⊗ var (λ PV → tt)) ∷
-  (π ("l" , arg-info visible defaultModality)
-   (λ PV → ListLogic GenericVar)
-   (var (λ PV → tt) ⊗
-    π ("l₁" , arg-info visible defaultModality)
-    (λ PV → ListLogic (GenericVar ×Logic GenericVar))
-    (var (λ PV → tt)))
-   ∷ (var (λ PV → tt) ∷ (var (λ PV → tt) ∷ []))))
- ("not" ∷ "dupli" ∷ "⊤" ∷ "false" ∷ []) Term.types.constr
- Term.types.split Term.types.split∘constr Term.types.constr∘split
- Term.types.wf)
- -}
-
-record Permission (Index : Set) (Code : (Index → Set)) (Constraint : (Index → Set)) : Set where
+record Solver (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   field
-    getPermission : (i : Index) → (Σ Index (ℒ ∘ Code)) → Maybe ((ℒ ∘ Code) i)
-    getPermissionCustom : (i : Index) → (Σ Index (Dual ∘ Constraint)) → Maybe ((Dual ∘ Constraint) i)
-open Permission ⦃...⦄ public
-
-record Solver (Index : Set) (Code : (Index → Set)) (Constraint : (Index → Set)) : Set where
-  field
-    solve : (i : Index)
-     → List ((Σ Index (ℒ ∘ Code)) ⊎ (Σ Index (Dual ∘ Constraint)))
-     → (Maybe ∘ List) (List ((Σ Index (ℒ ∘ Code)) ⊎ (Σ Index (Dual ∘ Constraint))))
+    solve : (c : 𝒞)
+     → ⦃ DecEq 𝒞 ⦄
+     → ⦃ FTUtils (Code c) ⦄
+     → ⦃ FTUtils (Constraint c) ⦄ 
+     → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
+     → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
+     → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 open Solver ⦃...⦄ public
 
---interpret : ∀ {A val C} → ⦃ FTUtils A ⦄ → (Index : Set) → (Code : (Index → Set)) → (i : Index) → Clause A val C → Clause A val C → ⊤
---interpret _ _ _ (fact f _) (fact g _) = {!   !}
+record Scheduler (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
+  field
+    schedule :
+     ⦃ DecEq 𝒞 ⦄
+     → ⦃ Solver 𝒞 Code Constraint ⦄
+     → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
+     → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+     → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+open Scheduler ⦃...⦄ public
+
+-- Generic type for Substitutions (Output of the solver).
+Subst : (𝒞 : Set) → (Code : (𝒞 → Set)) → (Constraint : (𝒞 → Set)) → Set
+Subst C code cns = List (ℕ × (Σᵢ C code code cns))
+
+-- Generic universe codes for entities that have variables.
+-- Extensively used by the utilities.
+data HasVariables : Set where
+  domainConstraint   : HasVariables
+  genericConstraint   : HasVariables
+  mixedConstraint   : HasVariables
+  atom        : HasVariables
+  literal     : HasVariables
+  clause      : HasVariables
+  listOf      : HasVariables → HasVariables
+  domainExpr  : HasVariables
+
+-- Decoding function for HasVariables
+⟦_,_,_,_,_⟧ᵥ :
+  (𝒞 : Set)
+  → (Code : (𝒞 → Set))
+  → (Constraint : (𝒞 → Set))
+  → Set
+  → HasVariables
+  → Set
+⟦ C , code , cns , at , domainConstraint ⟧ᵥ = Σᵢ C (Dual ∘ cns) code cns
+⟦ C , code , cns , at , genericConstraint ⟧ᵥ = Σᵢ C (ℒ ∘ code) code cns
+⟦ C , code , cns , at , mixedConstraint ⟧ᵥ = (Σᵢ C (ℒ ∘ code) code cns) ⊎ (Σᵢ C (Dual ∘ cns) code cns)
+⟦ _ , code , cns , at , atom ⟧ᵥ = at ×ᵢ at
+⟦ C , code , cns , at , literal ⟧ᵥ   = Literal at C code cns
+⟦ C , code , cns , at , clause ⟧ᵥ    = ClauseI at C code cns
+⟦ C , code , cns , at , listOf h ⟧ᵥ    = List (⟦ C , code , cns , at , h ⟧ᵥ)
+⟦ C , code , cns , at , domainExpr ⟧ᵥ  = Σᵢ C code code cns
