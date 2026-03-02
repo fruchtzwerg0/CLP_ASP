@@ -8,6 +8,7 @@ open import Data.List
 open import Data.Maybe
 open import Data.Sum
 open import Data.Product
+open import Data.Empty
 open import Function.Base
 
 open import Term.types hiding (_∧_)
@@ -68,7 +69,7 @@ unifyDisunify₀ :
   → List ((ℒ ∘ Code) c)
   → List (ℕ × (List (Code c)))
   → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
-  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ (λ _ → ⊥)) Code Constraint)
 
 -- maybe is for checking if the rule has been applied, outer list is for nondeterminism (and if empty failure), inner list is the new equation list.
 
@@ -208,6 +209,6 @@ unifyDisunify :
   → ⦃ FTUtils (Constraint c) ⦄ 
   → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
   → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
-  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ (λ _ → ⊥)) Code Constraint)
 unifyDisunify witness zipValue unifications = 
   unifyDisunify₀ witness zipValue rules [] ((catMaybes ∘ Data.List.map (λ {(inj₁ x) → just x ; (inj₂ _) → nothing})) unifications) [] []

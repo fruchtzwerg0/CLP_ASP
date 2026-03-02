@@ -28,7 +28,6 @@ record FTUtils {l} (A : Set l) : Set l where
     getNat : A → Maybe ℕ
     varName : A → Maybe ℕ
     occurs : ℕ → A → Bool
-    increment : ℕ → A → A
     collectVars : A → List ℕ
 open FTUtils ⦃...⦄ public
 
@@ -232,5 +231,4 @@ module _
   deriveFTUtils ⦃ SH ⦄ .getNat = getNat′ SH
   deriveFTUtils ⦃ SH ⦄ .varName = varName′ SH
   deriveFTUtils ⦃ SH ⦄ .occurs = λ { x y → occurs′ SH y x }
-  deriveFTUtils ⦃ SH ⦄ .increment = λ { _ → id }
   deriveFTUtils ⦃ SH ⦄ .collectVars = collectVars′ SH

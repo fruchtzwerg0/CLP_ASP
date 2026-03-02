@@ -23,32 +23,40 @@ open import Term.solverScheduler
 open import Term.clp
 open import FD.domain
 
-⟦_⟧ : Index → Set
-⟦ BoolI ⟧    = BoolLogic
-⟦ FDI ⟧    = ℕLogic
-⟦ ×I i ⟧    = ×Logic ⟦ i ⟧
+data My𝒞 : Set where
+  Bool𝒞  : My𝒞
+  FT𝒞  : My𝒞
+  ⊎𝒞 : (c₀ : My𝒞) → (c₁ : My𝒞) → My𝒞
 
-⟦_⟧ℒ : Index → Set
-⟦ BoolI ⟧ℒ    = ⊤
-⟦ NatI ⟧ℒ    = ℒℕ
-⟦ ×I i ⟧ℒ    = ⊤
+⟦_⟧ : My𝒞 → Set
+⟦ Bool𝒞 ⟧    = BoolLogic
+⟦ FD𝒞 ⟧    = ℕLogic
+⟦ ⊎𝒞 c₀ c₁ ⟧    = ⊎Logic ⟦ c₀ ⟧ ⟦ c₁ ⟧
+
+⟦_⟧ℒ : My𝒞 → Set
+⟦ Bool𝒞 ⟧ℒ    = ⊥
+⟦ Nat𝒞 ⟧ℒ    = ℒℕ
+⟦ ⊎𝒞 c₀ c₁ ⟧ℒ  = ⊥
+
+indexD : HasDesc My𝒞
+indexD = deriveDesc My𝒞
+
+instance  decMy𝒞 : DecEq My𝒞
+          decMy𝒞 = deriveDecEq indexD
 
 data Functor : Set where
   fnot    : Functor → Functor
-  validStream : FD → PQ → Functor
-  stream : FD → PQ → Functor
-  cancelled : FD → PQ → Functor
+  validStream : FD → ⊎Logic BoolLogic → Functor
+  stream : FD → ⊎Logic BoolLogic → Functor
+  cancelled : FD → ⊎Logic BoolLogic → Functor
   higherPrio : FD → FD → Functor
-  incompt : PQ → PQ → Functor
+  incompt : ⊎Logic BoolLogic → ⊎Logic BoolLogic → Functor
   ffalse  : Functor
 
-isNot : Functor → Bool
-isNot (fnot _) = true
-isNot _ = false
+functorD : HasDesc Functor
+functorD = deriveDesc Functor
 
-isForall : Functor → Bool
-isForall (fforall _ _ _) = true
-isForall _ = false
+foldFunctor = deriveFold functorD
 
 validate : ∀ {A} → Where → AbstractOrConcrete → Functor A → Set
 validate _ abstr (fnot _) = ⊤
@@ -58,52 +66,71 @@ validate bodyOfRule _ ftrue = ⊤
 validate _ _ ffalse = ⊤
 validate _ _ _ = ⊤
 
-indexD : HasDesc Index
-indexD = deriveDesc Index
+instance  aspUtils : ASPUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          aspUtils .not = fnot
+          aspUtils .isNot (fnot _) = true
+          aspUtils .isNot _ = false
 
-instance  decIndex : DecEq Index
-          decIndex = deriveDecEq indexD
+instance  constraintUtils : ConstraintUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          constraintUtils .increment Bool𝒞 _ ()
+          constraintUtils .increment FD𝒞 = incrementℒFD
+          constraintUtils .increment (⊎𝒞 i) _ ()
+          constraintUtils .apply Bool𝒞 _ _ _ ()
+          constraintUtils .apply FD𝒞 = applyℒFD
+          constraintUtils .apply (⊎𝒞 i) _ _ _ ()
 
-incrementFunctor : (i : Index) → ℕ → ⟦ i ⟧ → ⟦ i ⟧
-incrementFunctor BoolI n (varBool m) = varBool (m + n)
-incrementFunctor BoolI n expr = expr
-incrementFunctor NatI n (varℕ m) = varℕ (m + n)
-incrementFunctor NatI n zero = zero
-incrementFunctor NatI n (suc x) = incrementFunctor NatI n x
-incrementFunctor (ListI i) n (varList m) = varList (m + n)
-incrementFunctor (ListI i) n [] = []
-incrementFunctor (ListI i) n (x ∷ xs) = incrementFunctor i n x ∷ incrementFunctor (ListI i) n xs
-incrementFunctor (×I i) n (var× m) = var× (m + n)
-incrementFunctor (×I i) n (x ∶ y) = incrementFunctor i n x ∶ incrementFunctor i n y
+instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          valueUtils .zipMatch Bool𝒞 = zipMatchBool
+          valueUtils .zipMatch FD𝒞 = zipMatchFD
+          valueUtils .zipMatch (⊎𝒞 i) = zipMatch⊎
+          valueUtils .increment Bool𝒞 = incrementBool
+          valueUtils .increment FD𝒞 = incrementFD
+          valueUtils .increment (⊎𝒞 i) = increment⊎
+          valueUtils .apply Bool𝒞 Bool𝒞 = applyBool
+          valueUtils .apply FD𝒞 FD𝒞 = applyFD
+          valueUtils .apply (⊎𝒞 i₀) (⊎𝒞 i₁) = applyFD
+          valueUtils .apply i₀ Bool𝒞 n subst expr = expr
+          valueUtils .apply i₀ FD𝒞 n subst expr = expr
+          valueUtils .apply i₀ (⊎𝒞 i₁ i₂) n subst = 
+            fold⊎ 
+              (λ x → p (apply i₀ (⊎𝒞 i₁ i₂) n subst x)) 
+              (λ x → q (apply i₀ (⊎𝒞 i₁ i₂) n subst x))
 
-mapType : (i : Index) → FTUtils ⟦ i ⟧
-mapType BoolI      = unifyDisunifyBool
-mapType NatI       = unifyDisunifyNatL
-mapType (×I i)     = unifyDisunify×  ⦃ mapType i ⦄
-mapType (ListI i)  = unifyDisunifyList ⦃ mapType i ⦄
+instance  atomUtils : AtomUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          atomUtils .zipMatch fnot fnot = just []
+          atomUtils .zipMatch (validStream a b) (validStream x y) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞) (b =ℒ y)) ∷ [])
+          atomUtils .zipMatch (stream a b) (stream x y) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞) (b =ℒ y)) ∷ [])
+          atomUtils .zipMatch (cancelled a b) (cancelled x y) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞) (b =ℒ y)) ∷ [])
+          atomUtils .zipMatch (higherPrio a b) (higherPrio x y) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ [])
+          atomUtils .zipMatch (incompt a b) (incompt x y) = 
+            just ((_:-:_ (⊎𝒞 Bool𝒞) (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞) (b =ℒ y)) ∷ [])
+          atomUtils .zipMatch ffalse ffalse = just []
+          atomUtils .zipMatch _ _ = nothing
+          atomUtils .increment n = 
+            foldFunctor 
+              fnot 
+              (λ a b → validStream (incrementFD n a) (incrementBool n b))
+              (λ a b → stream (incrementFD n a) (incrementBool n b))
+              (λ a b → cancelled (incrementFD n a) (incrementBool n b))
+              (λ a b → higherPrio (incrementFD n a) (incrementFD n b))
+              (λ a b → incompt (incrementBool n a) (incrementBool n b))
+              ffalse
 
-mapConstraint : (i : Index) → FTUtils ⟦ i ⟧ℒ
-mapConstraint BoolI      = ftUtilsRestCns
-mapConstraint NatI       = ftUtilsNatCns
-mapConstraint (×I i)     = ftUtilsRestCns
-mapConstraint (ListI i)  = ftUtilsListCns ⦃ mapType i ⦄
-
-zipAtom : (i : Index) → Functor ⟦ i ⟧ → Functor ⟦ i ⟧ → Maybe (List (Σᵢ Index (ℒ ∘ ⟦_⟧) ⟦_⟧ ⟦_⟧ℒ))
-zipAtom i (dupli x y) (dupli a b) = 
-  just ((_:-:_ (ListI i) (x =ℒ a) ⦃ mapType (ListI i) ⦄ ⦃ mapConstraint (ListI i) ⦄) ∷ (_:-:_ (ListI (×I i)) (y =ℒ b) ⦃ mapType (ListI (×I i)) ⦄ ⦃ mapConstraint (ListI (×I i)) ⦄) ∷ [])
-zipAtom i _ _ = nothing
-
-instance  solver : Solver Index ⟦_⟧ ⟦_⟧ℒ
+instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
           solver .solve = unifyDisunify
 
-instance  scheduler : Scheduler Index ⟦_⟧ ⟦_⟧ℒ
-          scheduler .schedule = defaultSchedule ⦃ decIndex ⦄ ⦃ solver ⦄
+instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          scheduler .schedule = defaultSchedule ⦃ decMy𝒞 ⦄ ⦃ solver ⦄
 
 module program where
   open Term.types
 
   streamReasoning :
-    Clause Functor validate Index ⟦_⟧ ⟦_⟧ℒ
+    Clause Functor validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
   streamReasoning = do
     P ← new
     Data ← new
@@ -138,7 +165,7 @@ module program where
   groundProgram = applyVars hanoiProgram 0
 
   question :
-    Body (Functor ℕLogic) (validate bodyOfRule) Index ⟦_⟧ ⟦_⟧ℒ
+    Body (Functor ℕLogic) (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question = 
     hanoiMoves (suc (suc (suc zero))) (varList 0) •
 

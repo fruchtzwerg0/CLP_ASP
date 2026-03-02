@@ -8,8 +8,8 @@ data ASPAtom (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (�
 
 record ASPUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   field
-    isNot : A → Bool
-    not : A → A
+    isNot : Atom → Bool
+    not : Atom → Atom
 
 open ASPUtils ⦃...⦄ public
 

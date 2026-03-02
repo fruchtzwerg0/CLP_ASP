@@ -39,9 +39,9 @@ bindAndRename :
   → ℕ 
   → ClauseI Atom 𝒞 Code Constraint 
   → List (Literal Atom 𝒞 Code Constraint)
-bindAndRename {Atom}{C}{Code}{Constraint} ⦃ ft ⦄ zipAtom atom₀ n (atom₁ :-- l) with incrementᵥ C Code Constraint Atom (suc n) (_<ᵢ atom₁ ⦃ ft ⦄)
+bindAndRename {Atom}{C}{Code}{Constraint} ⦃ ft ⦄ zipAtom atom₀ n (atom₁ :-- l) with increment C Code Constraint Atom (suc n) (_<ᵢ atom₁ ⦃ ft ⦄)
 ... | (_<ᵢ res) =
-  ((Data.List.map (constraint ∘ inj₁)) ∘ maybeToList ∘ (zipAtom atom₀)) res ++ incrementᵥ C Code Constraint Atom (suc n) l
+  ((Data.List.map (constraint ∘ inj₁)) ∘ maybeToList ∘ (zipAtom atom₀)) res ++ increment C Code Constraint Atom (suc n) l
 
 equalFunctor : 
   {Atom : Set}
@@ -59,11 +59,11 @@ equalFunctor ⦃ ft ⦄ l r = functor ⦃ ft ⦄ l == (functor ⦃ ft ⦄ ∘ Cl
 eval : 
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
-  → ⦃ FTUtils Atom ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
-  → (zipAtom : Atom → Atom → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
-  → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
   → List (ClauseI Atom 𝒞 Code Constraint)
   → List (Literal Atom 𝒞 Code Constraint)
   → List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))

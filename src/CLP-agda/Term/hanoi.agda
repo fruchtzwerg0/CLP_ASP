@@ -70,7 +70,19 @@ pattern _≥List_ x y = (dual (x <ℒList y))
 
 infix 200 _<ℒℕ_
 infix 200 _<ℒList_
+{-
+mapType : (i : My𝒞) → FTUtils ⟦ i ⟧
+mapType Bool𝒞      = unifyDisunifyBool
+mapType NatI       = unifyDisunifyNatL
+mapType (⊎𝒞 i)     = unifyDisunify⊎  ⦃ mapType i ⦄
+mapType (List𝒞 i)  = unifyDisunifyList ⦃ mapType i ⦄
 
+mapConstraint : (i : My𝒞) → FTUtils ⟦ i ⟧ℒ
+mapConstraint Bool𝒞      = ftUtilsRestCns
+mapConstraint NatI       = ftUtilsNatCns
+mapConstraint (⊎𝒞 i)     = ftUtilsRestCns
+mapConstraint (List𝒞 i)  = ftUtilsListCns ⦃ mapType i ⦄
+-}
 data Index : Set where
   BoolI  : Index
   NatI  : Index
