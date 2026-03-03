@@ -66,5 +66,5 @@ zipMatchList :
 zipMatchList c₀ c₁ refl (a ∷ b) (x ∷ y) = just ((_:-:_ c₁ (a =ℒ x)) ∷ (_:-:_ c₀ (b =ℒ y)) ∷ [])
 zipMatchList _ _ = nothing
 -}
-incrementFD : ∀ {A} → ℕ → ListLogic A → ListLogic A
-incrementFD x = foldList [] _∷_ (λ y → varList (x + y))
+incrementList : ∀ {A} → ℕ → ListLogic A → ListLogic A
+incrementList x = foldList [] _∷_ (λ y → varList (x + y))

@@ -13,7 +13,7 @@ open import Data.Nat
 open import Data.List 
   using (List; []; _∷_; _++_; map; length; zip; zipWith; concat; foldr)
 open import Data.Maybe 
-  using (Maybe; just; nothing; map)
+  using (Maybe; just; nothing; map; is-just)
 open import Data.Product 
 open import Data.Sum
 open import Relation.Binary.PropositionalEquality 
@@ -32,16 +32,18 @@ maybeToList (just x) = x
 
 -- TO DO: use Maybe.map to erase second pattern match
 bindAndRename : 
-  ∀ {Atom 𝒞 Code Constraint} 
-  → ⦃ FTUtils Atom ⦄
-  → (zipAtom : Atom → Atom → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))) 
+  {Atom : Set}
+  → {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
   → Atom 
   → ℕ 
   → ClauseI Atom 𝒞 Code Constraint 
   → List (Literal Atom 𝒞 Code Constraint)
-bindAndRename {Atom}{C}{Code}{Constraint} ⦃ ft ⦄ zipAtom atom₀ n (atom₁ :-- l) with increment C Code Constraint Atom (suc n) (_<ᵢ atom₁ ⦃ ft ⦄)
-... | (_<ᵢ res) =
-  ((Data.List.map (constraint ∘ inj₁)) ∘ maybeToList ∘ (zipAtom atom₀)) res ++ increment C Code Constraint Atom (suc n) l
+bindAndRename {Atom}{C}{Code}{Constraint} ⦃ ft ⦄ atom₀ n (atom₁ :-- l)  =
+  ((Data.List.map (constraint ∘ inj₁)) ∘ maybeToList ∘ (zipMatch ft atom₀)) (increment ft (suc n) atom₁) 
+   ++ Data.List.map (incrementLiteral (suc n)) l
 
 equalFunctor : 
   {Atom : Set}
@@ -59,6 +61,7 @@ equalFunctor ⦃ ft ⦄ l r = functor ⦃ ft ⦄ l == (functor ⦃ ft ⦄ ∘ Cl
 eval : 
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
+  → ⦃ FTUtils Atom ⦄
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
@@ -73,55 +76,57 @@ eval :
     else (Maybe ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) -- type depends on whether findall mode is activated
 
 -- base cases for the two modi
-eval zipAtom zipValue program [] right true = right ∷ []
-eval zipAtom zipValue program [] right false = just right
+eval program [] right true = right ∷ []
+eval program [] right false = just right
 
 -- cases for splitting an atom into the body of its unified clause
-eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ solv ⦄ ⦃ sched ⦄ zipAtom zipValue program         (atom at ∷ left) right _ with findAll (equalFunctor ⦃ ft ⦄ at) program
-eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ solv ⦄ ⦃ sched ⦄ zipAtom zipValue .(forget split) (atom at ∷ left) right false | matches split _ _ 
+eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ program (atom at ∷ left) right _ with findAll (is-just ∘ zipMatch ato at ∘ ClauseI.head) program
+eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ .(forget split) (atom at ∷ left) right false | matches split _ _ 
   with Data.List.map (λ {cl → 
-    eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ solv ⦄ ⦃ sched ⦄ zipAtom zipValue (forget split)
-          ((bindAndRename ⦃ ft ⦄ zipAtom at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom at ⦃ ft ⦄ ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
+    eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (forget split)
+          ((bindAndRename ⦃ ato ⦄ at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom at ⦃ ft ⦄ ⦃ ato ⦄ ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
           right
           false})
       (first split)
 
-eval {c} zipAtom zipValue .(forget split) (atom at ∷ left) right false | matches split _ _
+eval {c} .(forget split) (atom at ∷ left) right false | matches split _ _
   | derivations with find (λ {(just _) → true ; nothing → false}) derivations
-eval zipAtom zipValue .(forget split) (atom at ∷ left) right _ | matches split _ _
+eval .(forget split) (atom at ∷ left) right _ | matches split _ _
   | .(_ ++ successful-derivation ∷ _) | found before successful-derivation _ after = successful-derivation
-eval zipAtom zipValue .(forget split)        (atom at ∷ left) right _ | matches split _ _
+eval .(forget split)        (atom at ∷ left) right _ | matches split _ _
   | no-successful-derivations         | not-found _ = nothing
 
-eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ solv ⦄ ⦃ sched ⦄ zipAtom zipValue .(forget split) (atom at ∷ left) right true | matches split _ _
+eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ .(forget split) (atom at ∷ left) right true | matches split _ _
   with Data.List.map (λ {cl → 
-    eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ solv ⦄ ⦃ sched ⦄ zipAtom zipValue
+    eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
           (forget split)
-          ((bindAndRename ⦃ ft ⦄ zipAtom at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom at ⦃ ft ⦄ ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
+          ((bindAndRename ⦃ ato ⦄ at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom at ⦃ ft ⦄ ⦃ ato ⦄ ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
           right
           true})
       (first split)
-eval {c} zipAtom zipValue .(forget split) (atom at ∷ left) right true | matches split _ _
+eval {c} .(forget split) (atom at ∷ left) right true | matches split _ _
   | derivations with findAll (λ {(_ ∷ _) → true ; [] → false}) derivations
-eval zipAtom zipValue .(forget split) (atom at ∷ left) right _ | matches split _ _
+eval .(forget split) (atom at ∷ left) right _ | matches split _ _
   | .(forget splitNondet) | matches splitNondet _ _ = concat (first splitNondet)
 
 -- cases for addition of domain constraints to the right side for preliminary consistency check by solver
-eval zipAtom zipValue program (constraint cnstr ∷ left) right false with schedule zipValue (cnstr ∷ right)
-eval zipAtom zipValue program (constraint cnstr ∷ left) right false | just newRight = eval zipAtom zipValue program left newRight false
-eval zipAtom zipValue program (constraint cnstr ∷ left) right false | nothing = nothing
+eval program (constraint cnstr ∷ left) right false with schedule (cnstr ∷ right)
+eval program (constraint cnstr ∷ left) right false | just newRight = eval program left newRight false
+eval program (constraint cnstr ∷ left) right false | nothing = nothing
 
-eval zipAtom zipValue program (constraint cnstr ∷ left) right true with schedule zipValue (cnstr ∷ right)
-eval zipAtom zipValue program (constraint cnstr ∷ left) right true | just newRight = eval zipAtom zipValue program left newRight true
-eval zipAtom zipValue program (constraint cnstr ∷ left) right true | nothing = []
+eval program (constraint cnstr ∷ left) right true with schedule (cnstr ∷ right)
+eval program (constraint cnstr ∷ left) right true | just newRight = eval program left newRight true
+eval program (constraint cnstr ∷ left) right true | nothing = []
 
 clpExecute : 
   ∀ {ConcreteAtom AbstractAtom 𝒞 validate Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
+  → ⦃ FTUtils AbstractAtom ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
-  → (zipAtom : AbstractAtom → AbstractAtom → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
-  → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
   → (convertProgram : List (ClauseI ConcreteAtom 𝒞 Code Constraint) → List (ClauseI AbstractAtom 𝒞 Code Constraint))
   → (convertQuestion : List (Literal ConcreteAtom 𝒞 Code Constraint) → List (Literal AbstractAtom 𝒞 Code Constraint))
   → (metaPredicates : List (
@@ -140,5 +145,5 @@ clpExecute :
   → if findAll 
     then (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
     else (Maybe ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) -- type depends on whether findall mode is activated
-clpExecute zipAtom zipValue convertProgram convertQuestion program question = 
-  eval zipAtom zipValue ((convertProgram ∘ toIntern ∘ proj₂ ∘ applyVars program) 0) ((convertQuestion ∘ toLiteralList) question) []
+clpExecute convertProgram convertQuestion metaPredicates program question = 
+  eval ((convertProgram ∘ toIntern ∘ proj₂ ∘ applyVars program) 0) ((convertQuestion ∘ toLiteralList) question) []

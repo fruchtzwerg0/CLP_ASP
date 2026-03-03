@@ -45,6 +45,40 @@ data Where : Set where
   headOfRule : Where
   bodyOfRule : Where
 
+record Σᵢ (A : Set) (B : A → Set) (Code : A → Set) (Cns : A → Set) : Set
+
+record ConstraintUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
+  field
+    increment : (c : 𝒞) → ℕ → Constraint c → Constraint c
+    apply : (c₀ : 𝒞) → (c₁ : 𝒞) → ℕ → Code c₀ → Constraint c₁ → Constraint c₁
+open ConstraintUtils ⦃...⦄ public
+
+record ValueUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
+  inductive
+  field
+    zipMatch : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))
+    increment : (c : 𝒞) → ℕ → Code c → Code c
+    apply : (c₀ : 𝒞) → (c₁ : 𝒞) → ℕ → Code c₀ → Code c₁ → Code c₁
+open ValueUtils ⦃...⦄ public
+
+record Σᵢ A B Code Cns where
+  inductive
+  constructor _:-:_
+  field
+    code   : A
+    value : B code
+    ⦃ instftval ⦄ : FTUtils (Code code)
+    ⦃ instval ⦄ : ValueUtils A Code Cns
+    ⦃ instftcns ⦄ : FTUtils (Cns code)
+    ⦃ instcns ⦄ : ConstraintUtils A Code Cns
+open Σᵢ public
+
+record AtomUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
+  field
+    zipMatch : Atom → Atom → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))
+    increment : ℕ → Atom → Atom
+open AtomUtils ⦃...⦄ public
+
 record _×ᵢ_ (A : Set) (B : Set) : Set where
   constructor _<ᵢ
   field
@@ -52,21 +86,12 @@ record _×ᵢ_ (A : Set) (B : Set) : Set where
     ⦃ inst ⦄ : FTUtils B
 open _×ᵢ_ public
 
-record Σᵢ (A : Set) (B : A → Set) (Code : A → Set) (Cns : A → Set) : Set where
-  constructor _:-:_
-  field
-    code   : A
-    value : B code
-    ⦃ instcode ⦄ : FTUtils (Code code)
-    ⦃ instcns ⦄ : FTUtils (Cns code)
-open Σᵢ public
-
 data Literal 
   (A : Set)
   (𝒞 : Set) 
   (Code : (𝒞 → Set))
   (Constraint : (𝒞 → Set)) : Set where
-  atom : A → ⦃ FTUtils A ⦄ → Literal A 𝒞 Code Constraint
+  atom : A → ⦃ FTUtils A ⦄ → ⦃ AtomUtils A 𝒞 Code Constraint ⦄ → Literal A 𝒞 Code Constraint
   constraint : (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint) → Literal A 𝒞 Code Constraint
 
 data Body 
@@ -75,10 +100,10 @@ data Body
   (𝒞 : Set) 
   (Code : (𝒞 → Set))
   (Constraint : (𝒞 → Set)) : Set where
-  end  : ⦃ FTUtils A ⦄ → (atom : A) → val atom → Body A val 𝒞 Code Constraint
+  end  : ⦃ FTUtils A ⦄ → ⦃ AtomUtils A 𝒞 Code Constraint ⦄ → (atom : A) → val atom → Body A val 𝒞 Code Constraint
   endst  : (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint) 
             → Body A val 𝒞 Code Constraint
-  cons : ⦃ FTUtils A ⦄ → (atom : A) → val atom → Body A val 𝒞 Code Constraint → Body A val 𝒞 Code Constraint
+  cons : ⦃ FTUtils A ⦄ → ⦃ AtomUtils A 𝒞 Code Constraint ⦄ → (atom : A) → val atom → Body A val 𝒞 Code Constraint → Body A val 𝒞 Code Constraint
   constr : (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)  
             → Body A val 𝒞 Code Constraint → Body A val 𝒞 Code Constraint
 
@@ -112,11 +137,11 @@ data Clause
   (𝒞 : Set) 
   (Code : (𝒞 → Set))
   (Constraint : (𝒞 → Set)) : Set₁ where
-  fact : ⦃ FTUtils A ⦄ → (atom : A)
+  fact : ⦃ FTUtils A ⦄ → ⦃ AtomUtils A 𝒞 Code Constraint ⦄ → (atom : A)
        → val headOfRule atom
        → Clause A val 𝒞 Code Constraint
 
-  rule : ⦃ FTUtils A ⦄ → (atom : A)
+  rule : ⦃ FTUtils A ⦄ → ⦃ AtomUtils A 𝒞 Code Constraint ⦄ → (atom : A)
        → val headOfRule atom
        → Body A (val bodyOfRule) 𝒞 Code Constraint
        → Clause A val 𝒞 Code Constraint
@@ -166,8 +191,9 @@ record Solver (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set))
     solve : (c : 𝒞)
      → ⦃ DecEq 𝒞 ⦄
      → ⦃ FTUtils (Code c) ⦄
+     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
      → ⦃ FTUtils (Constraint c) ⦄ 
-     → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
+     → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
      → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
      → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 open Solver ⦃...⦄ public
@@ -177,29 +203,9 @@ record Scheduler (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Se
     schedule :
      ⦃ DecEq 𝒞 ⦄
      → ⦃ Solver 𝒞 Code Constraint ⦄
-     → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
      → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
      → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 open Scheduler ⦃...⦄ public
-
-record ConstraintUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
-  field
-    increment : (c : 𝒞) → ℕ → Constraint c → Constraint c
-    apply : (c₀ : 𝒞) → (c₁ : 𝒞) → ℕ → Code c₀ → Constraint c₁ → Constraint c₁
-open ConstraintUtils ⦃...⦄ public
-
-record ValueUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
-  field
-    zipMatch : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))
-    increment : (c : 𝒞) → ℕ → Code c → Code c
-    apply : (c₀ : 𝒞) → (c₁ : 𝒞) → ℕ → Code c₀ → Code c₁ → Code c₁
-open ValueUtils ⦃...⦄ public
-
-record AtomUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
-  field
-    zipMatch : Atom → Atom → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))
-    increment : ℕ → Atom → Atom
-open AtomUtils ⦃...⦄ public
 
 -- Generic type for Substitutions (Output of the solver).
 Subst : (𝒞 : Set) → (Code : (𝒞 → Set)) → (Constraint : (𝒞 → Set)) → Set

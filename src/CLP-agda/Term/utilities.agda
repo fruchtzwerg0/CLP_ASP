@@ -17,6 +17,19 @@ open import Relation.Binary.PropositionalEquality
 open import Generics
 open import Function.Base
 
+applyConstraint : 
+  {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄ 
+  → (c : 𝒞)
+  → ℕ 
+  → Code c
+  → (ℒ ∘ Code) c
+  → (ℒ ∘ Code) c
+applyConstraint ⦃ ft ⦄ c k sub (x =ℒ y) = apply ft c c k sub x =ℒ apply ft c c k sub y
+applyConstraint ⦃ ft ⦄ c k sub (x ≠ℒ y) = apply ft c c k sub x ≠ℒ apply ft c c k sub y
+
 -- generic occurs function occursᵥ extended by term.
 
 occursConstraint : 
@@ -70,6 +83,42 @@ occursᵥ {clause} C code cns k (head :-- body) =
 
 occursᵥ {listOf y} C code cns k xs =
   any (occursᵥ {y} C code cns k) xs
+
+incrementCustomConstraint : 
+  {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄ 
+  → (c : 𝒞)
+  → ℕ 
+  → (Dual ∘ Constraint) c
+  → (Dual ∘ Constraint) c
+incrementCustomConstraint ⦃ ft ⦄ c k (default cust) = (default ∘ increment ft c k) cust
+incrementCustomConstraint ⦃ ft ⦄ c k (dual cust) = (dual ∘ increment ft c k) cust
+
+incrementConstraint : 
+  {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄ 
+  → (c : 𝒞)
+  → ℕ 
+  → (ℒ ∘ Code) c
+  → (ℒ ∘ Code) c
+incrementConstraint ⦃ ft ⦄ c k (x =ℒ y) = increment ft c k x =ℒ increment ft c k y
+incrementConstraint ⦃ ft ⦄ c k (x ≠ℒ y) = increment ft c k x ≠ℒ increment ft c k y
+
+incrementLiteral : 
+  {Atom : Set}
+  → {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ℕ
+  → Literal Atom 𝒞 Code Constraint
+  → Literal Atom 𝒞 Code Constraint
+incrementLiteral n (atom x ⦃ _ ⦄ ⦃ fs ⦄) = atom (increment fs n x)
+incrementLiteral n (constraint (inj₁ (_:-:_ c l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ ft ⦄ ⦃ _ ⦄))) = constraint (inj₁ (c :-: incrementConstraint c n l))
+incrementLiteral n (constraint (inj₂ (_:-:_ c l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ ft ⦄))) = constraint (inj₂ (c :-: incrementCustomConstraint c n l))
 
 collectVarsConstraint : 
   (𝒞 : Set)
@@ -148,8 +197,10 @@ getElse x (inj₂ (b :-: a)) with x ≟ b
 
 generalize : ∀ {𝒞 Code Constraint}
  → (c : 𝒞)
- → ⦃ FTUtils (Code c) ⦄ 
+ → ⦃ FTUtils (Code c) ⦄
+ → ⦃ ValueUtils 𝒞 Code Constraint ⦄
  → ⦃ FTUtils (Constraint c) ⦄ 
+ → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄ 
  → (ℒ ∘ Code) c 
  → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint
 generalize c p  = _:-:_ c p

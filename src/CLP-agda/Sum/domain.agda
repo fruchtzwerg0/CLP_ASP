@@ -32,8 +32,8 @@ instance  makeVar⊎ : ∀ {A B} → MakeVar (⊎Logic A B)
 instance  unifyDisunifyℕ : FTUtils ℕ
           unifyDisunifyℕ = deriveFTUtils ℕD
 
-instance  unifyDisunify⊎ : ∀ {A B} → ⦃ FTUtils A ⦄ → ⦃ FTUtils B ⦄ → FTUtils (⊎Logic A B)
-          unifyDisunify⊎ = deriveFTUtils ⊎D
+instance  ftUtils⊎ : ∀ {A B} → ⦃ FTUtils A ⦄ → ⦃ FTUtils B ⦄ → FTUtils (⊎Logic A B)
+          ftUtils⊎ = deriveFTUtils ⊎D
 
 fold⊎ = deriveFold ⊎D
 
@@ -60,6 +60,8 @@ zipMatch⊎ :
   → {Constraint : (𝒞 → Set)}
   → (c₀ : 𝒞)
   → (c₁ : 𝒞)
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ FTUtils (Code c₀) ⦄
   → ⦃ FTUtils (Constraint c₀) ⦄
   → ⦃ FTUtils (Code c₁) ⦄
@@ -71,5 +73,5 @@ zipMatch⊎ c₀ c₁ (p x) (p y) = just ((_:-:_ c₀ (x =ℒ y)) ∷ [])
 zipMatch⊎ c₀ c₁ (q x) (q y) = just ((_:-:_ c₁ (x =ℒ y)) ∷ [])
 zipMatch⊎ _ _ _ _ = nothing
 
-incrementFD : ∀ {A B} → ℕ → ⊎Logic A B → ⊎Logic A B
-incrementFD x = fold⊎ p q (λ y → var⊎ (x + y))
+increment⊎ : ∀ {A B} → ℕ → ⊎Logic A B → ⊎Logic A B
+increment⊎ x = fold⊎ p q (λ y → var⊎ (x + y))

@@ -44,11 +44,11 @@ instance  makeVarFD : MakeVar FD
 instance  unifyDisunifyℕ : FTUtils ℕ
           unifyDisunifyℕ = deriveFTUtils ℕD
 
-instance  unifyDisunifyFD : FTUtils FD
-          unifyDisunifyFD = deriveFTUtils FDD
+instance  ftUtilsFD : FTUtils FD
+          ftUtilsFD = deriveFTUtils FDD
 
-instance  unifyDisunifyℒFD : FTUtils ℒFD
-          unifyDisunifyℒFD = deriveFTUtils ℒFDD
+instance  ftUtilsℒFD : FTUtils ℒFD
+          ftUtilsℒFD = deriveFTUtils ℒFDD
 
 foldFD = deriveFold FDD
 

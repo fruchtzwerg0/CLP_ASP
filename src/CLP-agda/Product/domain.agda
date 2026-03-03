@@ -58,6 +58,8 @@ zipMatch× :
   → {Constraint : (𝒞 → Set)}
   → (c₀ : 𝒞)
   → (c₁ : 𝒞)
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ FTUtils (Code c₀) ⦄
   → ⦃ FTUtils (Constraint c₀) ⦄
   → ⦃ FTUtils (Code c₁) ⦄

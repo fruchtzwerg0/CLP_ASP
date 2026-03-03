@@ -47,29 +47,27 @@ defaultSchedule₀ :
   ∀ {𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
-  → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
   → List (Σᵢ 𝒞 (λ _ → ⊤) Code Constraint)
   → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
-defaultSchedule₀ ⦃ dec ⦄ zipValue ((_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) ∷ xs) unifications = 
-  let res = (solve c ⦃ dec ⦄ ⦃ instCode ⦄ ⦃ instCns ⦄ zipValue ∘ catMaybes ∘ Data.List.map (getPermission c)) unifications in
-    (headMaybe ∘ catMaybes ∘ Data.List.map (λ y → defaultSchedule₀ zipValue
+defaultSchedule₀ ⦃ dec ⦄ ((_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) ∷ xs) unifications = 
+  let res = (solve c ⦃ dec ⦄ ⦃ instCode ⦄ ⦃ instCns ⦄ ∘ catMaybes ∘ Data.List.map (getPermission c)) unifications in
+    (headMaybe ∘ catMaybes ∘ Data.List.map (λ y → defaultSchedule₀
       ((nubBy equal ∘ _++_ xs ∘ 
-      Data.List.map (λ {(inj₁ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄ ;
-                        (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄}) ∘ 
+      Data.List.map (λ {(inj₁ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄ ;
+                        (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄}) ∘ 
       catMaybes ∘ 
       (Data.List.map ∘ getElse) c) 
       y) y)) res
-defaultSchedule₀ _ [] unifications = just unifications
+defaultSchedule₀ [] unifications = just unifications
 
 defaultSchedule : 
   ∀ {𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
-  → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
   → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
-defaultSchedule zipValue unifications = defaultSchedule₀ zipValue (
+defaultSchedule unifications = defaultSchedule₀ (
   (nubBy equal ∘ 
    Data.List.map (λ {(inj₁ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄ ;
                      (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄})) unifications) unifications

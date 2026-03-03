@@ -28,8 +28,8 @@ instance  makeVarBoolLogic : MakeVar BoolLogic
 instance  unifyDisunifyℕ : FTUtils ℕ
           unifyDisunifyℕ = deriveFTUtils ℕD
 
-instance  unifyDisunifyBoolLogic : FTUtils BoolLogic
-          unifyDisunifyBoolLogic = deriveFTUtils boolD
+instance  ftUtilsBool : FTUtils BoolLogic
+          ftUtilsBool = deriveFTUtils boolD
 
 foldBool = deriveFold boolD
 
