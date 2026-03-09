@@ -22,6 +22,7 @@ open import Term.unifyDisunify
 open import Term.solverScheduler
 open import Term.clp
 open import ASP.types
+open import Empty.domain
 open import Bool.domain
 open import FD.domain
 open import Sum.domain
@@ -47,9 +48,9 @@ mapType FD𝒞        = ftUtilsFD
 mapType (⊎𝒞 c₀ c₁) = ftUtils⊎  ⦃ mapType c₀ ⦄  ⦃ mapType c₁ ⦄
 
 mapConstraint : (c : My𝒞) → FTUtils ⟦ c ⟧ℒ
-mapConstraint Bool𝒞 = record {}
+mapConstraint Bool𝒞 = ftUtils⊥
 mapConstraint FD𝒞        = ftUtilsℒFD
-mapConstraint (⊎𝒞 c₀ c₁) = record {}
+mapConstraint (⊎𝒞 c₀ c₁) = ftUtils⊥
 
 indexD : HasDesc My𝒞
 indexD = deriveDesc My𝒞
@@ -68,6 +69,9 @@ data Functor : Set where
 
 functorD : HasDesc Functor
 functorD = deriveDesc Functor
+
+instance  ftUtilsFunctor : FTUtils Functor
+          ftUtilsFunctor = deriveFTUtils functorD
 
 foldFunctor = deriveFold functorD
 
@@ -91,51 +95,54 @@ instance  constraintUtils : ConstraintUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
           constraintUtils .apply _ _ _ _ expr = expr
 
 instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          valueUtils .zipMatch Bool𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ Bool𝒞 l ⦃ ftUtilsBool ⦄ ⦃ _ ⦄ ⦃ record {} ⦄)) ∘ zipMatchBool c
-          valueUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ ftUtilsFD ⦄ ⦃ _ ⦄ ⦃ ftUtilsℒFD ⦄)) ∘ zipMatchFD c
+          valueUtils .zipMatch Bool𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ Bool𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchBool c
+          valueUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchFD c
           valueUtils .zipMatch (⊎𝒞 c₀ c₁) = zipMatch⊎ c₀ c₁ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄
           valueUtils .increment Bool𝒞 = incrementBool
           valueUtils .increment FD𝒞 = incrementFD
           valueUtils .increment (⊎𝒞 c₀ c₁) = increment⊎
           valueUtils .apply Bool𝒞 Bool𝒞 = applyBool
           valueUtils .apply FD𝒞 FD𝒞 = applyFD
-          valueUtils .apply (⊎𝒞 c₀ c₁) (⊎𝒞 c₀ c₁) = apply⊎ i₀ i₁
+          valueUtils .apply (⊎𝒞 c₀ c₁) (⊎𝒞 c₂ c₃) = apply⊎ c₀ c₁ c₂ c₃ (apply valueUtils (⊎𝒞 c₀ c₁) c₂) (apply valueUtils (⊎𝒞 c₀ c₁) c₃)
           valueUtils .apply i₀ Bool𝒞 n subst expr = expr
           valueUtils .apply i₀ FD𝒞 n subst expr = expr
           valueUtils .apply i₀ (⊎𝒞 c₀ c₁) n subst = 
             fold⊎ 
-              (λ x → p (apply i₀ (⊎𝒞 c₀ c₁) n subst x)) 
-              (λ x → q (apply i₀ (⊎𝒞 c₀ c₁) n subst x))
+              (λ x → p (apply valueUtils i₀ c₀ n subst x)) 
+              (λ x → q (apply valueUtils i₀ c₁ n subst x))
+              var⊎
 
-instance  atomUtils : AtomUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          atomUtils .zipMatch fnot fnot = just []
+instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          atomUtils .zipMatch (fnot x) (fnot y) = zipMatch atomUtils x y
           atomUtils .zipMatch (validStream a b) (validStream x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞) (b =ℒ y)) ∷ [])
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
           atomUtils .zipMatch (stream a b) (stream x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞) (b =ℒ y)) ∷ [])
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
           atomUtils .zipMatch (cancelled a b) (cancelled x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞) (b =ℒ y)) ∷ [])
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
           atomUtils .zipMatch (higherPrio a b) (higherPrio x y) = 
             just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ [])
           atomUtils .zipMatch (incompt a b) (incompt x y) = 
-            just ((_:-:_ (⊎𝒞 Bool𝒞) (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞) (b =ℒ y)) ∷ [])
+            just ((_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (a =ℒ x) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
           atomUtils .zipMatch ffalse ffalse = just []
           atomUtils .zipMatch _ _ = nothing
           atomUtils .increment n = 
             foldFunctor 
               fnot 
-              (λ a b → validStream (incrementFD n a) (incrementBool n b))
-              (λ a b → stream (incrementFD n a) (incrementBool n b))
-              (λ a b → cancelled (incrementFD n a) (incrementBool n b))
+              (λ a b → validStream (incrementFD n a) (increment⊎ n b))
+              (λ a b → stream (incrementFD n a) (increment⊎ n b))
+              (λ a b → cancelled (incrementFD n a) (increment⊎ n b))
               (λ a b → higherPrio (incrementFD n a) (incrementFD n b))
-              (λ a b → incompt (incrementBool n a) (incrementBool n b))
+              (λ a b → incompt (increment⊎ n a) (increment⊎ n b))
               ffalse
 
 instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          solver .solve = unifyDisunify
+          solver .solve Bool𝒞 = unifyDisunify Bool𝒞 ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
+          solver .solve FD𝒞 = {! !}
+          solver .solve (⊎𝒞 c₀ c₁) = unifyDisunify (⊎𝒞 c₀ c₁) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
 
 instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          scheduler .schedule = defaultSchedule ⦃ decMy𝒞 ⦄ ⦃ solver ⦄
+          scheduler .schedule = defaultSchedule ⦃ _ ⦄ ⦃ _ ⦄
 
 module program where
   open Term.types
@@ -162,21 +169,21 @@ module program where
     PLo ← new
 
     higherPrio PHi PLo :-
-        PHi ＃> PLo •
+      (◇ (FD𝒞 :-: (PHi ＃> PLo))) ↼•
     
     X ← new
 
-    incompt (inj₁ X) (inj₂ X) •
-    incompt (inj₂ X) (inj₁ X) •
+    incompt (p X) (q X) •
+    incompt (q X) (p X) •
 
-    stream zero (inj₁ X) •
-    stream (suc zero) (inj₁ true) •
-    stream (suc (suc zero)) (inj₁ false) •
-    stream (suc (suc (suc zero))) (inj₁ true) •
+    stream zero (p X) •
+    stream (suc zero) (q true) •
+    stream (suc (suc zero)) (q false) •
+    stream (suc (suc (suc zero))) (p true) •
 
   question :
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question = 
     validStream (varFD 0) (var⊎ 1) •
 
-  execute = clpExecute id id streamReasoning question false
+  execute = clpExecute id id [] streamReasoning question false

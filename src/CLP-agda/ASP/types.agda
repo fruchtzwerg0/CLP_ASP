@@ -20,9 +20,11 @@ data ASPAtom (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (�
   nmrCheck : ASPAtom Atom 𝒞 Code Constraint
   chk : ℕ → List (Σᵢ 𝒞 Code Code Constraint) → ASPAtom Atom 𝒞 Code Constraint
 
-record ASPUtils (Atom : Set) : Set where
+record ASPUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   field
     isNot : Atom → Bool
     not : Atom → Atom
+    toggle : Atom → Atom
+    fillWithVars : Atom → ℕ → Atom
 
 open ASPUtils ⦃...⦄ public

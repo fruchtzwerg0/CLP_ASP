@@ -48,7 +48,9 @@ data Where : Set where
 record Σᵢ (A : Set) (B : A → Set) (Code : A → Set) (Cns : A → Set) : Set
 
 record ConstraintUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
+  inductive
   field
+    zipMatch : (c : 𝒞) → Constraint c → Constraint c → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
     increment : (c : 𝒞) → ℕ → Constraint c → Constraint c
     apply : (c₀ : 𝒞) → (c₁ : 𝒞) → ℕ → Code c₀ → Constraint c₁ → Constraint c₁
 open ConstraintUtils ⦃...⦄ public
@@ -56,7 +58,7 @@ open ConstraintUtils ⦃...⦄ public
 record ValueUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   inductive
   field
-    zipMatch : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))
+    zipMatch : (c : 𝒞) → Code c → Code c → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
     increment : (c : 𝒞) → ℕ → Code c → Code c
     apply : (c₀ : 𝒞) → (c₁ : 𝒞) → ℕ → Code c₀ → Code c₁ → Code c₁
 open ValueUtils ⦃...⦄ public
@@ -71,11 +73,12 @@ record Σᵢ A B Code Cns where
     ⦃ instval ⦄ : ValueUtils A Code Cns
     ⦃ instftcns ⦄ : FTUtils (Cns code)
     ⦃ instcns ⦄ : ConstraintUtils A Code Cns
+    ⦃ decval ⦄ : DecEq (Code code)
 open Σᵢ public
 
 record AtomUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   field
-    zipMatch : Atom → Atom → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))
+    zipMatch : Atom → Atom → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
     increment : ℕ → Atom → Atom
 open AtomUtils ⦃...⦄ public
 
@@ -91,7 +94,7 @@ data Literal
   (𝒞 : Set) 
   (Code : (𝒞 → Set))
   (Constraint : (𝒞 → Set)) : Set where
-  atom : A → ⦃ FTUtils A ⦄ → ⦃ AtomUtils A 𝒞 Code Constraint ⦄ → Literal A 𝒞 Code Constraint
+  atom : ⦃ FTUtils A ⦄ → ⦃ AtomUtils A 𝒞 Code Constraint ⦄ → A → Literal A 𝒞 Code Constraint
   constraint : (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint) → Literal A 𝒞 Code Constraint
 
 data Body 
@@ -130,6 +133,7 @@ record ClauseI
     head : Atom
     body : List (Literal Atom 𝒞 Code Constraint)
     ⦃ inst ⦄ : FTUtils Atom
+    ⦃ instAt ⦄ : AtomUtils Atom 𝒞 Code Constraint
 
 data Clause 
   (A : Set) 

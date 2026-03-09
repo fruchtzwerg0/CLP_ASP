@@ -44,15 +44,17 @@ apply⊎ :
   → ⦃ DecEq 𝒞 ⦄
   → (c₀ : 𝒞)
   → (c₁ : 𝒞)
-  → (ℕ → ⊎Logic (Code c₀) (Code c₁) → Code c₀ → Code c₀)
-  → (ℕ → ⊎Logic (Code c₀) (Code c₁) → Code c₁ → Code c₁)
+  → (c₂ : 𝒞)
+  → (c₃ : 𝒞)
+  → (ℕ → ⊎Logic (Code c₀) (Code c₁) → Code c₂ → Code c₂)
+  → (ℕ → ⊎Logic (Code c₀) (Code c₁) → Code c₃ → Code c₃)
   → ℕ 
-  → ⊎Logic (Code c₀) (Code c₁) → ⊎Logic (Code c₀) (Code c₁) → ⊎Logic (Code c₀) (Code c₁)
-apply⊎ c₀ c₁ _ _ n subst (var⊎ m) with c₀ ≟ c₁
-... | yes refl = if m ≡ᵇ n then subst else (var⊎ m)
-... | no _ = var⊎ m
-apply⊎ {C}{Code}{Constraint} c₀ c₁ app₀ app₁ n subst (p expr) = p (app₀ n subst expr)
-apply⊎ {C}{Code}{Constraint} c₀ c₁ app₀ app₁ n subst (q expr) = q (app₁ n subst expr)
+  → ⊎Logic (Code c₀) (Code c₁) → ⊎Logic (Code c₂) (Code c₃) → ⊎Logic (Code c₂) (Code c₃)
+apply⊎ c₀ c₁ c₂ c₃ _ _ n subst (var⊎ m) with c₀ ≟ c₂ | c₁ ≟ c₃
+... | yes refl | yes refl = if m ≡ᵇ n then subst else (var⊎ m)
+... | _ | _ = var⊎ m
+apply⊎ {C}{Code}{Constraint} c₀ c₁ c₂ c₃ app₀ app₁ n subst (p expr) = p (app₀ n subst expr)
+apply⊎ {C}{Code}{Constraint} c₀ c₁ c₂ c₃ app₀ app₁ n subst (q expr) = q (app₁ n subst expr)
 
 zipMatch⊎ : 
   {𝒞 : Set}

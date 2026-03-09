@@ -116,7 +116,7 @@ incrementLiteral :
   → ℕ
   → Literal Atom 𝒞 Code Constraint
   → Literal Atom 𝒞 Code Constraint
-incrementLiteral n (atom x ⦃ _ ⦄ ⦃ fs ⦄) = atom (increment fs n x)
+incrementLiteral n (atom ⦃ _ ⦄ ⦃ fs ⦄ x) = atom (increment fs n x)
 incrementLiteral n (constraint (inj₁ (_:-:_ c l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ ft ⦄ ⦃ _ ⦄))) = constraint (inj₁ (c :-: incrementConstraint c n l))
 incrementLiteral n (constraint (inj₂ (_:-:_ c l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ ft ⦄))) = constraint (inj₂ (c :-: incrementCustomConstraint c n l))
 
@@ -160,7 +160,7 @@ collectVarsᵥ {genericConstraint} C code cns (c₁ :-: l) = collectVarsConstrai
 
 collectVarsᵥ {atom} C code cns (_<ᵢ x ⦃ inst ⦄)  = collectVars x
 
-collectVarsᵥ {literal} C code cns (atom a ⦃ inst ⦄) = collectVarsᵥ {atom} C code cns (_<ᵢ a ⦃ inst ⦄)
+collectVarsᵥ {literal} C code cns (atom ⦃ inst ⦄ a) = collectVarsᵥ {atom} C code cns (_<ᵢ a ⦃ inst ⦄)
 collectVarsᵥ {literal} {at} C code cns (constraint ℓ) = collectVarsᵥ {mixedConstraint} {at} C code cns ℓ
 
 collectVarsᵥ {clause} C code cns (_:--_ head body ⦃ inst ⦄) =
@@ -201,6 +201,7 @@ generalize : ∀ {𝒞 Code Constraint}
  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
  → ⦃ FTUtils (Constraint c) ⦄ 
  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄ 
+ → ⦃ DecEq (Code c) ⦄
  → (ℒ ∘ Code) c 
  → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint
 generalize c p  = _:-:_ c p

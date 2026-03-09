@@ -72,7 +72,7 @@ unifyDisunify₀ :
   → List ((ℒ ∘ Code) c)
   → List (ℕ × (List (Code c)))
   → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
-  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ (λ _ → ⊥)) Code Constraint)
+  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 
 -- maybe is for checking if the rule has been applied, outer list is for nondeterminism (and if empty failure), inner list is the new equation list.
 
@@ -213,7 +213,7 @@ unifyDisunify :
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ FTUtils (Constraint c) ⦄ 
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
-  → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
-  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ (λ _ → ⊥)) Code Constraint)
+  → List ((ℒ ∘ Code) c ⊎ (Dual ∘ (λ _ → ⊥)) c)
+  → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 unifyDisunify witness unifications = 
   unifyDisunify₀ witness rules [] ((catMaybes ∘ Data.List.map (λ {(inj₁ x) → just x ; (inj₂ _) → nothing})) unifications) [] []
