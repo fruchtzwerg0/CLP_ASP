@@ -58,35 +58,33 @@ equal (_:-:_ c₀ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ inst ⦄) (_:-:_
 without : {A : Set} → (A → A → Bool) → List A → List A → List A
 without pred xs ys = filterᵇ (λ x → Data.Bool.not (any (pred x) ys)) xs
 
-toASPAtom : 
+toNewLiteral : 
   {Atom : Set}
+  {Atom₀ : Set}
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
-  → Atom
-  → ASPAtom Atom 𝒞 Code Constraint
-toASPAtom x = wrap x 0 []
-
-toASPLiteral : 
-  {Atom : Set}
-  → {𝒞 : Set}
-  → {Code : (𝒞 → Set)}
-  → {Constraint : (𝒞 → Set)}
-  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
-  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ FTUtils Atom₀ ⦄
+  → ⦃ AtomUtils Atom₀ 𝒞 Code Constraint ⦄
+  → (Atom → Atom₀)
   → Literal Atom 𝒞 Code Constraint 
-  → Literal (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
-toASPLiteral ⦃ a ⦄ ⦃ cn ⦄ (atom at) = atom ⦃ a ⦄ ⦃ cn ⦄ (toASPAtom at)
-toASPLiteral (constraint c) = constraint c
+  → Literal Atom₀ 𝒞 Code Constraint
+toNewLiteral ⦃ a ⦄ ⦃ cn ⦄ toNewAtom (atom at) = atom ⦃ a ⦄ ⦃ cn ⦄ (toNewAtom at)
+toNewLiteral _ (constraint c) = constraint c
 
 makeTopLevelBody : 
-  ∀ {Atom 𝒞 Code Constraint}
+  {Atom : Set}
+  {Atom₀ : Set}
+  → {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → (Atom → ℕ → List (Σᵢ 𝒞 Code Code Constraint) → Atom₀)
   → Atom
   → ℕ 
-  → List (ASPAtom Atom 𝒞 Code Constraint)
-makeTopLevelBody at zero = []
-makeTopLevelBody at (suc x) = wrap (ASP.types.not at) (suc x) [] ∷ makeTopLevelBody at x
+  → List Atom₀
+makeTopLevelBody f at zero = []
+makeTopLevelBody f at (suc x) = f at (suc x) [] ∷ makeTopLevelBody f at x
 
 zipMatchRecursive : 
   {Atom : Set}
@@ -167,33 +165,39 @@ buildNegatedBody _ [] = []
 
 applyDeMorgan : 
   {Atom : Set}
+  {Atom₀ : Set}
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
-  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
-  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ AtomUtils Atom₀ 𝒞 Code Constraint ⦄
+  → ⦃ FTUtils Atom₀ ⦄
   → ⦃ DecEq 𝒞 ⦄
+  → (Atom → ℕ → List (Σᵢ 𝒞 Code Code Constraint) → Atom₀)
+  → (Atom → Atom₀)
   → ℕ
   → ClauseI Atom 𝒞 Code Constraint
-  → List (ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
-applyDeMorgan n (hea :-- bod) = let forAllVars = existentialVars (hea :-- bod)
-  in unfoldr (λ { (suc x) → just ((wrap (ASP.types.not hea) n forAllVars :-- (Data.List.map toASPLiteral ∘ buildNegatedBody ( ∣ length bod - x ∣ )) bod) , x) ;
+  → List (ClauseI Atom₀ 𝒞 Code Constraint)
+applyDeMorgan f toNewAtom n (hea :-- bod) = let forAllVars = existentialVars (hea :-- bod)
+  in unfoldr (λ { (suc x) → just ((f hea n forAllVars :-- ((Data.List.map ∘ toNewLiteral) toNewAtom ∘ buildNegatedBody ( ∣ length bod - x ∣ )) bod) , x) ;
                   zero → nothing }) (length bod)
 
 buildForAll : 
   {Atom : Set}
+  {Atom₀ : Set}
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → (Atom → ℕ → List (Σᵢ 𝒞 Code Code Constraint) → Atom₀)
+  → (Σᵢ 𝒞 Code Code Constraint → Atom₀ → Atom₀)
   → ℕ
   → List (Σᵢ 𝒞 Code Code Constraint)
   → List (Σᵢ 𝒞 Code Code Constraint)
   → Atom
-  → ASPAtom Atom 𝒞 Code Constraint
-buildForAll n (v ∷ vars) acc name = forAll v (buildForAll n vars (v ∷ acc) name)
-buildForAll n [] acc name = wrap (ASP.types.not name) n acc
+  → Atom₀
+buildForAll f forA n (v ∷ vars) acc name = forA v (buildForAll f forA n vars (v ∷ acc) name)
+buildForAll f forA n [] acc name = f name n acc
 
 normalize : 
   {Atom : Set}
@@ -211,26 +215,30 @@ normalize {_}{C}{Code}{Constraint} (_:--_ hea bod ⦃ ft ⦄ ⦃ at ⦄) =
 
 computeDual : 
   {Atom : Set}
+  {Atom₀ : Set}
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
-  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
-  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ AtomUtils Atom₀ 𝒞 Code Constraint ⦄
+  → ⦃ FTUtils Atom₀ ⦄
   → ⦃ DecEq 𝒞 ⦄
+  → (Atom → ℕ → List (Σᵢ 𝒞 Code Code Constraint) → Atom₀)
+  → (Atom → Atom₀)
+  → (Σᵢ 𝒞 Code Code Constraint → Atom₀ → Atom₀)
   → List (ClauseI Atom 𝒞 Code Constraint)
-  → List (ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
-computeDual ((hea :-- bod) ∷ xs) = 
-  ((toASPAtom ∘ ASP.types.not) hea :-- (Data.List.map atom (reverse (makeTopLevelBody hea ((suc ∘ length) xs))))) ∷
+  → List (ClauseI Atom₀ 𝒞 Code Constraint)
+computeDual f toNewAtom forA ((hea :-- bod) ∷ xs) = 
+  ((toNewAtom ∘ ASP.types.not) hea :-- (Data.List.map atom (reverse (makeTopLevelBody f hea ((suc ∘ length) xs))))) ∷
   (concat ∘ Data.List.map
     (λ {(n , (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄)) → 
       if (_≡ᵇ_ 0 ∘ length ∘ existentialVars) (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄)
-           then applyDeMorgan (suc n) (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄)
-           else (wrap (ASP.types.not hea) (suc n) [] :--
-              ((atom ∘ buildForAll (suc n) (existentialVars (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄)) []) hea ∷ [])
-              ∷ applyDeMorgan (suc n) (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄))} ))
+           then applyDeMorgan f toNewAtom (suc n) (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄)
+           else (f hea (suc n) [] :--
+              ((atom ∘ buildForAll f forA (suc n) (existentialVars (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄)) []) hea ∷ [])
+              ∷ applyDeMorgan f toNewAtom (suc n) (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄))} ))
            (zipWith _,_ ((upTo ∘ suc ∘ length) xs) ((hea :-- bod) ∷ xs))
-computeDual [] = []
+computeDual _ _ _ [] = []
 
 insertGroup :
   {A B : Set} →
@@ -265,4 +273,6 @@ computeDuals :
   → ⦃ DecEq 𝒞 ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)
   → List (ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
-computeDuals ⦃ _ ⦄ ⦃ at ⦄ x = (concat ∘ Data.List.map computeDual ∘ (groupByKey ClauseI.head (λ x → is-just ∘ zipMatch at x))) x
+computeDuals ⦃ _ ⦄ ⦃ at ⦄ =
+  concat ∘ (Data.List.map ∘ computeDual (λ at n l → wrap (ASP.types.not at) n l) (λ x → wrap x 0 [])) forAll
+  ∘ (groupByKey ClauseI.head (λ x → is-just ∘ zipMatch at x)) ∘ Data.List.map normalize

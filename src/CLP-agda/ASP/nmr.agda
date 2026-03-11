@@ -1,3 +1,5 @@
+{-# OPTIONS --allow-unsolved-metas #-}
+
 module ASP.nmr where
 
 open import Term.types hiding (_>>=_)
@@ -21,9 +23,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl)
 open import Function.Base
 
-open import Relation.Nullary
-open import Relation.Nullary.Decidable as Decidable
-open import Relation.Binary.PropositionalEquality
+open import Generics
 
 open import ASP.dual
 
@@ -103,11 +103,75 @@ findOLON ⦃ at ⦄ program = ((catMaybes ∘ (Data.List.map ∘ toClause) progr
        (proj₂ ∘ findOLON₀ program [] visited) clause) ([] , []) ∘ concat ∘ Data.List.map (λ y → 
     (zipWith _,_ (Data.List.map ClauseI.head y) ∘ upTo ∘ length) y) ∘ groupByKey ClauseI.head (λ y → is-just ∘ zipMatch at y)) program
 
-makeNMRRules : 
+appendNotSelf : 
   ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → ClauseI Atom 𝒞 Code Constraint
+  → ClauseI Atom 𝒞 Code Constraint
+appendNotSelf x with (ASP.types.isFalse ∘ ClauseI.head) x
+... | true = x
+... | false with (last ∘ ClauseI.body) x
+... | nothing = x
+... | (just (constraint _)) = x
+... | (just (atom ⦃ _ ⦄ ⦃ at ⦄ y)) with equalAtom ⦃ at ⦄ (ClauseI.head x) y
+... | true = x
+... | false = _:--_ (ClauseI.head x) (ClauseI.body x ++ (atom ⦃ _ ⦄ ⦃ at ⦄ y) ∷ []) ⦃ _ ⦄ ⦃ at ⦄
+
+toChk : 
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → (ℕ × ClauseI Atom 𝒞 Code Constraint)
+  → ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
+toChk ⦃ at ⦄ (n , x) = chk n 0
+  ((Data.List.map (λ { (_:-:_ c₁ (x =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) 
+                    ; (_:-:_ c₁ (x ≠ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) }) 
+                    ∘ maybeToList ∘ (zipMatch at ∘ ClauseI.head) x ∘ ClauseI.head) x) :-- 
+                    ((Data.List.map ∘ toNewLiteral) (λ x → wrap x 0 []) ∘ ClauseI.body) x
+
+makeNMRRule : 
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ DecEq 𝒞 ⦄
+  → (ℕ × ClauseI Atom 𝒞 Code Constraint)
+  → List (ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
+makeNMRRule (n , x) with (ASP.types.isFalse ∘ ClauseI.head) x
+makeNMRRule (n , x) | true  = (computeDual (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) id forAll ∘ [_] ∘ toChk) (n , x)
+makeNMRRule (n , x) | false = (computeDual (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) id forAll ∘ [_] ∘ toChk) (n , appendNotSelf x)
+
+makeTopLevelBodyForNMR : 
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ℕ × ClauseI Atom 𝒞 Code Constraint
+  → ASPAtom Atom 𝒞 Code Constraint
+makeTopLevelBodyForNMR (n , x) with (ASP.types.isFalse ∘ ClauseI.head) x
+makeTopLevelBodyForNMR ⦃ ft ⦄ ⦃ at ⦄ (n , x) | true = (ClauseI.head ∘ toChk) (n , x)
+makeTopLevelBodyForNMR ⦃ ft ⦄ ⦃ at ⦄ (n , x) | false = 
+  if (_≡ᵇ_ 0 ∘ length ∘ collectVarsWithType ∘ atom ⦃ ft ⦄ ⦃ at ⦄ ∘ ClauseI.head) x
+  then (ClauseI.head ∘ toChk) (n , x)
+  else (buildForAll (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) forAll n
+    ((collectVarsWithType ∘ atom ⦃ ft ⦄ ⦃ at ⦄ ∘ ClauseI.head) x) [] ∘ ClauseI.head ∘ toChk) (n , x)
+
+computeNMR : 
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ DecEq 𝒞 ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)
-  → List (ClauseI Atom 𝒞 Code Constraint)
-makeNMRRules x = x
+  → List (ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
+computeNMR x with (Data.List.map normalize ∘ findOLON) x
+... | y = (nmrCheck :-- Data.List.map atom ((Data.List.map makeTopLevelBodyForNMR ∘ zipWith _,_ ((upTo ∘ suc ∘ length) y)) y)) ∷ 
+  (concat ∘ Data.List.map makeNMRRule ∘ zipWith _,_ ((upTo ∘ suc ∘ length) y)) y
 
 addNMR : 
   {Atom : Set}
@@ -121,10 +185,3 @@ addNMR :
 addNMR [] = atom nmrCheck ∷ []
 addNMR (atom x ∷ xs) = atom (wrap x 0 []) ∷ addNMR xs
 addNMR (constraint x ∷ xs) = constraint x ∷ addNMR xs
-
-computeNMR : 
-  ∀ {Atom 𝒞 Code Constraint}
-  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
-  → List (ClauseI Atom 𝒞 Code Constraint)
-  → List (ClauseI Atom 𝒞 Code Constraint)
-computeNMR = makeNMRRules ∘ findOLON
