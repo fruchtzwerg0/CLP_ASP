@@ -136,6 +136,19 @@ existentialVars (_:--_ hea bod ⦃ ft ⦄ ⦃ at ⦄) =
     ((concat ∘ Data.List.map collectVarsWithType) bod)
     ((collectVarsWithType ∘ atom ⦃ ft ⦄ ⦃ at ⦄) hea)
 
+negateConstraint : 
+  {Atom : Set}
+  → {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+  → (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+negateConstraint (inj₁ (c₁ :-: (l =ℒ r))) = inj₁ (c₁ :-: (l ≠ℒ r))
+negateConstraint (inj₁ (c₁ :-: (l ≠ℒ r))) = inj₁ (c₁ :-: (l =ℒ r))
+negateConstraint (inj₂ (c₁ :-: (dual l))) = inj₂ (c₁ :-: (default l))
+negateConstraint (inj₂ (c₁ :-: (default l))) = inj₂ (c₁ :-: (dual l))
+
 negateLiteral : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -145,10 +158,7 @@ negateLiteral :
   → Literal Atom 𝒞 Code Constraint
   → Literal Atom 𝒞 Code Constraint
 negateLiteral (atom at) = (atom ∘ toggle) at
-negateLiteral (constraint (inj₁ (c₁ :-: (l =ℒ r)))) = constraint (inj₁ (c₁ :-: (l ≠ℒ r)))
-negateLiteral (constraint (inj₁ (c₁ :-: (l ≠ℒ r)))) = constraint (inj₁ (c₁ :-: (l =ℒ r)))
-negateLiteral (constraint (inj₂ (c₁ :-: (dual l)))) = constraint (inj₂ (c₁ :-: (default l)))
-negateLiteral (constraint (inj₂ (c₁ :-: (default l)))) = constraint (inj₂ (c₁ :-: (dual l)))
+negateLiteral (constraint x) = (constraint ∘ negateConstraint) x
 
 buildNegatedBody : 
   {Atom : Set}

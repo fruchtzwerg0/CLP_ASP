@@ -27,5 +27,4 @@ record ASPUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : 
     not : Atom → Atom
     toggle : Atom → Atom
     fillWithVars : Atom → ℕ → Atom
-
 open ASPUtils ⦃...⦄ public

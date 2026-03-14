@@ -56,94 +56,125 @@ equalFunctor :
   → Bool
 equalFunctor ⦃ ft ⦄ l r = functor ⦃ ft ⦄ l == (functor ⦃ ft ⦄ ∘ ClauseI.head) r
 
+EvalType : Set → (𝒞 : Set) → (𝒞 → Set) → (𝒞 → Set) → Set → Set
+EvalType Atom 𝒞 Code Constraint Custom = 
+  Custom
+  → List (ClauseI Atom 𝒞 Code Constraint)
+  → List (Literal Atom 𝒞 Code Constraint)
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+  → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
+
 -- Generic evaluation function, terminating required because this requires Turing-completeness
-{-# TERMINATING #-}
 eval : 
-  ∀ {Atom 𝒞 Code Constraint}
+  ∀ {Atom 𝒞 Code Constraint Custom}
   → ⦃ DecEq 𝒞 ⦄
   → ⦃ FTUtils Atom ⦄
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Grounder 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
-  → List (ClauseI Atom 𝒞 Code Constraint)
-  → List (Literal Atom 𝒞 Code Constraint)
-  → List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-  → (findAll : Bool)
-  → if findAll 
-    then (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-    else (Maybe ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) -- type depends on whether findall mode is activated
+  → (intercept : 
+    ⦃ DecEq 𝒞 ⦄
+    → ⦃ FTUtils Atom ⦄
+    → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+    → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+    → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+    → ⦃ Solver 𝒞 Code Constraint ⦄
+    → ⦃ Grounder 𝒞 Code Constraint ⦄
+    → ⦃ Scheduler 𝒞 Code Constraint ⦄
+    → EvalType Atom 𝒞 Code Constraint Custom)
+  → EvalType Atom 𝒞 Code Constraint Custom
 
--- base cases for the two modi
-eval program [] right true = right ∷ []
-eval program [] right false = just right
+-- base case
+eval _ custom program [] right = (custom , right) ∷ []
 
 -- cases for splitting an atom into the body of its unified clause
-eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ program (atom at ∷ left) right _ with findAll (is-just ∘ zipMatch ato at ∘ ClauseI.head) program
-eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ .(forget split) (atom at ∷ left) right false | matches split _ _ 
-  with Data.List.map (λ {cl → 
-    eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (forget split)
-          ((bindAndRename ⦃ ato ⦄ at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom at ⦃ ft ⦄ ⦃ ato ⦄ ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
-          right
-          false})
-      (first split)
+eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ _ _ program (atom at ∷ left) right with findAll (is-just ∘ zipMatch ato at ∘ ClauseI.head) program
 
-eval {c} .(forget split) (atom at ∷ left) right false | matches split _ _
-  | derivations with find (λ {(just _) → true ; nothing → false}) derivations
-eval .(forget split) (atom at ∷ left) right _ | matches split _ _
-  | .(_ ++ successful-derivation ∷ _) | found before successful-derivation _ after = successful-derivation
-eval .(forget split)        (atom at ∷ left) right _ | matches split _ _
-  | no-successful-derivations         | not-found _ = nothing
-
-eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ .(forget split) (atom at ∷ left) right true | matches split _ _
+eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ intercept custom .(forget split) (atom at ∷ left) right | matches split _ _
   with Data.List.map (λ {cl → 
-    eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
+    intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
+          custom 
           (forget split)
-          ((bindAndRename ⦃ ato ⦄ at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom at ⦃ ft ⦄ ⦃ ato ⦄ ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
-          right
-          true})
+          ((bindAndRename ⦃ ato ⦄ at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom ⦃ ft ⦄ ⦃ ato ⦄ at ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
+          right})
       (first split)
-eval {c} .(forget split) (atom at ∷ left) right true | matches split _ _
-  | derivations with findAll (λ {(_ ∷ _) → true ; [] → false}) derivations
-eval .(forget split) (atom at ∷ left) right _ | matches split _ _
-  | .(forget splitNondet) | matches splitNondet _ _ = concat (first splitNondet)
+eval _ _ .(forget split) (atom at ∷ left) right | matches split _ _
+  | derivations with findAll (λ { (_ ∷ _) → true ; [] → false}) derivations
+eval _ _ .(forget split) (atom at ∷ left) right | matches split _ _
+  | .(forget splitNondet) | matches splitNondet _ _ = (concat ∘ first) splitNondet
 
--- cases for addition of domain constraints to the right side for preliminary consistency check by solver
-eval program (constraint cnstr ∷ left) right false with schedule (cnstr ∷ right)
-eval program (constraint cnstr ∷ left) right false | just newRight = eval program left newRight false
-eval program (constraint cnstr ∷ left) right false | nothing = nothing
-
-eval program (constraint cnstr ∷ left) right true with schedule (cnstr ∷ right)
-eval program (constraint cnstr ∷ left) right true | just newRight = eval program left newRight true
-eval program (constraint cnstr ∷ left) right true | nothing = []
-
+eval intercept custom program (constraint cnstr ∷ left) right with (schedule ∘ Data.List.map (_∷_ cnstr)) right
+eval intercept custom program (constraint cnstr ∷ left) right | newConstraints = intercept  custom program left newConstraints
+{-
 clpExecute : 
-  ∀ {ConcreteAtom AbstractAtom 𝒞 validate Code Constraint}
+  ∀ {ConcreteAtom AbstractAtom 𝒞 validate Code Constraint Custom}
   → ⦃ DecEq 𝒞 ⦄
   → ⦃ FTUtils AbstractAtom ⦄
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Grounder 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → (convertProgram : List (ClauseI ConcreteAtom 𝒞 Code Constraint) → List (ClauseI AbstractAtom 𝒞 Code Constraint))
   → (convertQuestion : List (Literal ConcreteAtom 𝒞 Code Constraint) → List (Literal AbstractAtom 𝒞 Code Constraint))
-  → (metaPredicates : List (
-    (AbstractAtom → Bool) × 
-    ((zipAtom : AbstractAtom → AbstractAtom → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
-    → (zipValue : (c : 𝒞) → Code c → Code c → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)))
-    → Clause ConcreteAtom validate 𝒞 Code Constraint
-    → Body ConcreteAtom (validate bodyOfRule) 𝒞 Code Constraint
-    → (findAll : Bool)
-    → if findAll 
-      then (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-      else (Maybe ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))))
+  → (intercept : 
+    ⦃ DecEq 𝒞 ⦄
+    → ⦃ FTUtils AbstractAtom ⦄
+    → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+    → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+    → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
+    → ⦃ Solver 𝒞 Code Constraint ⦄
+    → ⦃ Grounder 𝒞 Code Constraint ⦄
+    → ⦃ Scheduler 𝒞 Code Constraint ⦄
+    → List ((AbstractAtom → Bool) × 
+    EvalType AbstractAtom 𝒞 Code Constraint Custom)
+    → EvalType AbstractAtom 𝒞 Code Constraint Custom)
+  → ( : 
+    List ((AbstractAtom → Bool) × 
+    EvalType AbstractAtom 𝒞 Code Constraint Custom))
+  → Custom
   → Clause ConcreteAtom validate 𝒞 Code Constraint
   → Body ConcreteAtom (validate bodyOfRule) 𝒞 Code Constraint
-  → (findAll : Bool)
-  → if findAll 
-    then (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-    else (Maybe ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) -- type depends on whether findall mode is activated
-clpExecute convertProgram convertQuestion metaPredicates program question = 
-  eval ((convertProgram ∘ toIntern ∘ proj₂ ∘ applyVars program) 0) ((convertQuestion ∘ toLiteralList) question) []
+  → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (_×_ ℕ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → Code c × (List ∘ Code) c) Code Constraint)))
+clpExecute convertProgram convertQuestion intercept  custom program question = 
+  let result = eval intercept  custom ((convertProgram ∘ toIntern ∘ proj₂ ∘ applyVars program) 0) ((convertQuestion ∘ toLiteralList) question) [] in
+  Data.List.map (λ (_ , l) → Data.List.map (λ (_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) → ground c) l) result
+-}
+
+clpExecute : 
+  ∀ {ConcreteAtom AbstractAtom 𝒞 validate Code Constraint Custom}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ FTUtils AbstractAtom ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Grounder 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → (convertProgram : List (ClauseI ConcreteAtom 𝒞 Code Constraint) → List (ClauseI AbstractAtom 𝒞 Code Constraint))
+  → (convertQuestion : List (Literal ConcreteAtom 𝒞 Code Constraint) → List (Literal AbstractAtom 𝒞 Code Constraint))
+  → (intercept : 
+    ⦃ DecEq 𝒞 ⦄
+    → ⦃ FTUtils AbstractAtom ⦄
+    → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+    → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+    → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
+    → ⦃ Solver 𝒞 Code Constraint ⦄
+    → ⦃ Grounder 𝒞 Code Constraint ⦄
+    → ⦃ Scheduler 𝒞 Code Constraint ⦄
+    → EvalType AbstractAtom 𝒞 Code Constraint Custom)
+  → Custom
+  → Clause ConcreteAtom validate 𝒞 Code Constraint
+  → Body ConcreteAtom (validate bodyOfRule) 𝒞 Code Constraint
+  → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
+clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept custom program question = 
+  eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ 
+    (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄)
+    custom 
+    ((convertProgram ∘ toIntern ∘ proj₂ ∘ applyVars program) 0) 
+    ((convertQuestion ∘ toLiteralList) question) 
+    []

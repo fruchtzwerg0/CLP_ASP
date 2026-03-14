@@ -202,13 +202,25 @@ record Solver (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set))
      → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 open Solver ⦃...⦄ public
 
+record Grounder (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
+  field
+    ground : (c : 𝒞)
+     → ⦃ DecEq 𝒞 ⦄
+     → ⦃ FTUtils (Code c) ⦄
+     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+     → ⦃ FTUtils (Constraint c) ⦄ 
+     → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+     → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
+     → List ((ℕ × Code c) ⊎ (Code c × (List ∘ Code) c))
+open Grounder ⦃...⦄ public
+
 record Scheduler (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   field
     schedule :
      ⦃ DecEq 𝒞 ⦄
      → ⦃ Solver 𝒞 Code Constraint ⦄
-     → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
-     → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+     → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+     → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 open Scheduler ⦃...⦄ public
 
 -- Generic type for Substitutions (Output of the solver).
