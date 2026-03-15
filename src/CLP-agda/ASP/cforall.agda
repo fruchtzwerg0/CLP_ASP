@@ -28,26 +28,42 @@ open import Generics
 open import Term.clp
 open import ASP.dual
 
-cForall₀ : 
-  ∀ {𝒞 Code Constraint}
-  → ⦃ Scheduler 𝒞 Code Constraint ⦄
-  → ℕ
+addToConstraintStore : 
+  ∀ {Atom 𝒞 Code Constraint}
   → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-  → List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+  → (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+addToConstraintStore store c = Data.List.map (_∷_ c) store
+
+cForall₀ : 
+  ∀ {Atom 𝒞 Code Constraint}
+  → {Custom : Set}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → ℕ
+  → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
   → Bool
 cForall₀ _ [] _ = false
-cForall₀ {C}{Code}{Constraint} v (newConstraints ∷ xs) store with partitionᵇ (any (_≡ᵇ_ v) ∘ collectVarsᵥ C Code Constraint) newConstraints
-... | (x , y) with y ++ store
-... | newStore = false
-  --(any ∘ cForall₀ v xs ∘ Data.List.map (_++_ newStore) ∘ filterᵇ (Data.Bool.not ∘ null) 
-  --∘ Data.List.map (schedule ∘ [_] ∘ _++_ newStore ∘ [_] ∘ negateConstraint)) x
+cForall₀ {Atom}{C}{Code}{Constraint} v ((_ , answer) ∷ answers) store with 
+  Data.List.map (partitionᵇ (any (_≡ᵇ_ v) ∘ collectVarsᵥ {_}{Atom} C Code Constraint)) answer
+... | xy with (concat ∘ Data.List.map (λ z → (Data.List.map (_++_ z ∘ proj₂)) xy)) store
+... | newStore with
+  (filterᵇ (Data.Bool.not ∘ null) 
+  ∘ concat ∘ Data.List.map (concat ∘ Data.List.map (schedule ∘ addToConstraintStore newStore ∘ negateConstraint))) (Data.List.map proj₁ xy)
+... | [] = true
+... | xs = cForall₀ v answers xs
 
 cForall : 
-  ∀ {Atom 𝒞 validate Code Constraint}
+  ∀ {Atom 𝒞 Code Constraint}
+  → {Custom : Set}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → ℕ
-  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-cForall ⦃ sched ⦄ v constraints with cForall₀ ⦃ sched ⦄ v constraints []
-... | true = constraints
-... | false = []
+  → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
+  → Bool
+cForall ⦃ sched ⦄ v answers = cForall₀ ⦃ sched ⦄ v answers []

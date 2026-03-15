@@ -66,14 +66,15 @@ EvalType Atom 𝒞 Code Constraint Custom =
 
 -- Generic evaluation function, terminating required because this requires Turing-completeness
 eval : 
-  ∀ {Atom 𝒞 Code Constraint Custom}
+  ∀ {Atom 𝒞 Code Constraint}
+  → {Custom : Set}
   → ⦃ DecEq 𝒞 ⦄
   → ⦃ FTUtils Atom ⦄
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
-  → ⦃ Grounder 𝒞 Code Constraint ⦄
+  --→ ⦃ Grounder 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → (intercept : 
     ⦃ DecEq 𝒞 ⦄
@@ -82,7 +83,7 @@ eval :
     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
     → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
     → ⦃ Solver 𝒞 Code Constraint ⦄
-    → ⦃ Grounder 𝒞 Code Constraint ⦄
+    --→ ⦃ Grounder 𝒞 Code Constraint ⦄
     → ⦃ Scheduler 𝒞 Code Constraint ⦄
     → EvalType Atom 𝒞 Code Constraint Custom)
   → EvalType Atom 𝒞 Code Constraint Custom
@@ -91,11 +92,11 @@ eval :
 eval _ custom program [] right = (custom , right) ∷ []
 
 -- cases for splitting an atom into the body of its unified clause
-eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ _ _ program (atom at ∷ left) right with findAll (is-just ∘ zipMatch ato at ∘ ClauseI.head) program
+eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ _ _ program (atom at ∷ left) right with findAll (is-just ∘ zipMatch ato at ∘ ClauseI.head) program
 
-eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ intercept custom .(forget split) (atom at ∷ left) right | matches split _ _
+eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ intercept custom .(forget split) (atom at ∷ left) right | matches split _ _
   with Data.List.map (λ {cl → 
-    intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
+    intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
           custom 
           (forget split)
           ((bindAndRename ⦃ ato ⦄ at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom ⦃ ft ⦄ ⦃ ato ⦄ at ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
@@ -117,7 +118,7 @@ clpExecute :
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
-  → ⦃ Grounder 𝒞 Code Constraint ⦄
+  --→ ⦃ Grounder 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → (convertProgram : List (ClauseI ConcreteAtom 𝒞 Code Constraint) → List (ClauseI AbstractAtom 𝒞 Code Constraint))
   → (convertQuestion : List (Literal ConcreteAtom 𝒞 Code Constraint) → List (Literal AbstractAtom 𝒞 Code Constraint))
@@ -128,7 +129,7 @@ clpExecute :
     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
     → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
     → ⦃ Solver 𝒞 Code Constraint ⦄
-    → ⦃ Grounder 𝒞 Code Constraint ⦄
+    --→ ⦃ Grounder 𝒞 Code Constraint ⦄
     → ⦃ Scheduler 𝒞 Code Constraint ⦄
     → List ((AbstractAtom → Bool) × 
     EvalType AbstractAtom 𝒞 Code Constraint Custom)
@@ -139,7 +140,8 @@ clpExecute :
   → Custom
   → Clause ConcreteAtom validate 𝒞 Code Constraint
   → Body ConcreteAtom (validate bodyOfRule) 𝒞 Code Constraint
-  → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (_×_ ℕ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → Code c × (List ∘ Code) c) Code Constraint)))
+  --→ List (Custom × (List ∘ List) ((Σᵢ 𝒞 (_×_ ℕ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → Code c × (List ∘ Code) c) Code Constraint)))
+  → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
 clpExecute convertProgram convertQuestion intercept  custom program question = 
   let result = eval intercept  custom ((convertProgram ∘ toIntern ∘ proj₂ ∘ applyVars program) 0) ((convertQuestion ∘ toLiteralList) question) [] in
   Data.List.map (λ (_ , l) → Data.List.map (λ (_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) → ground c) l) result
@@ -153,7 +155,7 @@ clpExecute :
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
-  → ⦃ Grounder 𝒞 Code Constraint ⦄
+  --→ ⦃ Grounder 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → (convertProgram : List (ClauseI ConcreteAtom 𝒞 Code Constraint) → List (ClauseI AbstractAtom 𝒞 Code Constraint))
   → (convertQuestion : List (Literal ConcreteAtom 𝒞 Code Constraint) → List (Literal AbstractAtom 𝒞 Code Constraint))
@@ -164,16 +166,16 @@ clpExecute :
     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
     → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
     → ⦃ Solver 𝒞 Code Constraint ⦄
-    → ⦃ Grounder 𝒞 Code Constraint ⦄
+    --→ ⦃ Grounder 𝒞 Code Constraint ⦄
     → ⦃ Scheduler 𝒞 Code Constraint ⦄
     → EvalType AbstractAtom 𝒞 Code Constraint Custom)
   → Custom
   → Clause ConcreteAtom validate 𝒞 Code Constraint
   → Body ConcreteAtom (validate bodyOfRule) 𝒞 Code Constraint
   → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
-clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept custom program question = 
-  eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ 
-    (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄)
+clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept custom program question = 
+  eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ 
+    (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
     custom 
     ((convertProgram ∘ toIntern ∘ proj₂ ∘ applyVars program) 0) 
     ((convertQuestion ∘ toLiteralList) question) 

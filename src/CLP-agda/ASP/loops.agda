@@ -25,74 +25,107 @@ open import Function.Base
 
 open import Generics
 
+open import Term.clp
+
 open import ASP.dual
 open import ASP.cforall
 
+{-# TERMINATING #-}
+mod : ℕ → ℕ → ℕ
+mod n zero = n
+mod n m with compare n m
+... | less _ _ = n
+... | _ = mod (n ∸ m) m
+
 checkCHS :
   ∀ {Atom 𝒞 Code Constraint}
-  → (List ∘ List) ((ℒ ∘ Code) c ⊎ (Dual ∘ (λ _ → ⊥)) c)
-  → List Atom
-  → Atom
-  → (List ∘ List) ((ℒ ∘ Code) c ⊎ (Dual ∘ (λ _ → ⊥)) c) ⊎ ⊤
-checkCHS (constraint ∷ constraints) x y = 
-  if any (unifyDisunify ∘ _++_ (y ∷ constraint)) x
-  then inj₂ (record {})
-  else (inj₁ ∘ Data.List.map ([_] ∘ _≠ℒ_ y) ∘ Data.List.map (unifyDisunify ∘ _++_ (toggle y ∷ constraints))) x
-
-checkLoops :
-  ∀ {Atom 𝒞 Code Constraint}
-  → (List ∘ List) ((ℒ ∘ Code) c ⊎ (Dual ∘ (λ _ → ⊥)) c)
-  → List Atom
-  → Atom
-  → ℕ
-  → (List ∘ List) ((ℒ ∘ Code) c ⊎ (Dual ∘ (λ _ → ⊥)) c) ⊎ ⊤
-checkLoops _ [] y n = inj₂ (record {})
-checkLoops (constraint ∷ constraints) (x ∷ xs) y n = 
-  if unifyDisunify x y
-  then
-    if n ≡ᵇ 0 
-    then inj₁ []
-    else 
-      if n mod 2 ≡ᵇ 0
-      then inj₁ (unifyDisunify x y)
-      else checkLoops xs y (if isNot x then suc n else n)
-  else checkLoops xs y (if isNot x then suc n else n)
-
-checkASP : 
-  ∀ {Atom 𝒞 Code Constraint}
-  → (List ∘ List) ((ℒ ∘ Code) c ⊎ (Dual ∘ (λ _ → ⊥)) c)
-  → List Atom
-  → List Atom
-  → Atom
-  → List Atom × (List ∘ List) ((ℒ ∘ Code) c ⊎ (Dual ∘ (λ _ → ⊥)) c)
-checkASP constraints chs xs y with checkCHS constraints chs y
-... | inj₂ _ = constraints                                    -- CHS success
-... | inj₁ newConstraints with checkLoops newConstraints xs y -- CHS neutral
-... | inj₂ _ = eval y chs xs newConstraints                   -- Loop neutral
-... | inj₁ [] = []                                            -- Loop fail
-... | inj₁ (x ∷ xs) = (x ∷ xs)                                -- Loop success
-
-interceptASP :
-  ∀ {Atom 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
-  → ⦃ FTUtils Atom ⦄
-  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
-  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
-  → List Atom × List Atom
-  → List (ClauseI Atom 𝒞 Code Constraint)
-  → List (Literal Atom 𝒞 Code Constraint)
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-  → List (List Atom × List Atom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
+  → List Atom
+  → Atom
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) ⊎ ⊤
+checkCHS ⦃ dec ⦄ ⦃ at ⦄ constraints x y with 
+  (any (Data.Bool.not ∘ null) ∘ Data.List.map (schedule ∘ concat ∘ Data.List.map (addToConstraintStore constraints) ∘ Data.List.map inj₁) ∘ catMaybes ∘ Data.List.map (zipMatch at y)) x
+... | true = inj₂ (record {})
+... | false = 
+  (inj₁ ∘ {!   !} ∘ 
+  filterᵇ (null ∘ schedule ∘ concat ∘ Data.List.map (addToConstraintStore constraints) ∘ Data.List.map inj₁) ∘ catMaybes ∘ Data.List.map (zipMatch at (toggle y))) x
+-- Data.List.map (Data.List.map negateConstraint)
+checkLoops :
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+  → List Atom
+  → Atom
+  → ℕ
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) ⊎ ⊤
+checkLoops _ [] y n = inj₂ (record {})
+checkLoops ⦃ dec ⦄ ⦃ at ⦄ constraints (x ∷ xs) y n with 
+  zipMatch at x y Data.Maybe.>>= (just ∘ schedule ∘ concat ∘ Data.List.map (addToConstraintStore constraints) ∘ Data.List.map inj₁)
+... | just result =
+  if n ≡ᵇ 0 
+  then inj₁ []
+  else 
+    if mod n 2 ≡ᵇ 0
+    then inj₁ result
+    else checkLoops constraints xs y (if isNot x then suc n else n)
+... | nothing =
+  checkLoops constraints xs y (if isNot x then suc n else n)
+
+{-# TERMINATING #-}
+checkASP : 
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → (ASPAtom Atom 𝒞 Code Constraint)
+  → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint))
+
+{-# TERMINATING #-}
+interceptASP :
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint))
+
+checkASP at (chs , stack) program goals constraints with checkCHS constraints chs at
+... | inj₂ _ = ((chs , stack) , constraints) ∷ []                                       -- CHS success
+... | inj₁ newConstraints with checkLoops newConstraints stack at 0                     -- CHS neutral
+... | inj₂ _ = eval interceptASP (chs , stack) program (atom at ∷ goals) newConstraints -- Loop neutral
+... | inj₁ [] = []                                                                      -- Loop fail
+... | inj₁ (x ∷ xs) = ((chs , stack) , x ∷ xs) ∷ []                                     -- Loop success
+
 interceptASP (chs , stack) program (constraint cn ∷ goals) constraints = 
-  eval (chs , stack) program (constraint cn ∷ goals) constraints
-interceptASP (chs , stack) program (atom at ∷ goals) constraints with (λ { (forAll v _) → just v ; _ → nothing }) at
-interceptASP (chs , stack) program (atom at ∷ goals) constraints | nothing = 
-  checkASP constraints chs stack at
-interceptASP (chs , stack) program (atom at ∷ goals) constraints | just v with varName v
-interceptASP (chs , stack) program (atom at ∷ goals) constraints | just v | just n =
-  eval (chs , stack) program (atom at ∷ goals) (cForall n constraints)
-interceptASP (chs , stack) program (atom at ∷ goals) constraints | just v | nothing =
-  checkASP constraints chs stack at
+  eval interceptASP (chs , stack) program (constraint cn ∷ goals) constraints
+interceptASP {Atom}{C}{Code}{Constraint} (chs , stack) program (atom (forAll v x) ∷ goals) constraints with collectVarsᵥ C Code Constraint v
+interceptASP (chs , stack) program (atom (forAll v x) ∷ goals) constraints | (n ∷ _) =
+  if cForall n (eval interceptASP (chs , stack) program (atom x ∷ goals) [])
+  then eval interceptASP (chs , stack) program goals constraints
+  else []
+interceptASP (chs , stack) program (atom (forAll v x) ∷ goals) constraints | [] =
+  checkASP (forAll v x) (chs , stack) program goals constraints
+interceptASP (chs , stack) program (atom at ∷ goals) constraints = 
+  checkASP at (chs , stack) program goals constraints
+interceptASP x y [] z = 
+  eval interceptASP x y [] z
