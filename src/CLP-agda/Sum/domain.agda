@@ -25,6 +25,9 @@ data ⊎Logic (A : Set) (B : Set) : Set where
 ℕD : HasDesc ℕ
 ℕD = deriveDesc ℕ
 
+instance  decℕ : DecEq ℕ
+          decℕ = deriveDecEq ℕD
+
 instance  makeVar⊎ : ∀ {A B} → MakeVar (⊎Logic A B)
           makeVar⊎ .fresh = var⊎
           makeVar⊎ .new = var⊎ 0
@@ -36,6 +39,9 @@ instance  ftUtils⊎ : ∀ {A B} → ⦃ FTUtils A ⦄ → ⦃ FTUtils B ⦄ →
           ftUtils⊎ = deriveFTUtils ⊎D
 
 fold⊎ = deriveFold ⊎D
+
+instance  dec⊎ : ∀ {A B} → ⦃ DecEq A ⦄ → ⦃ DecEq B ⦄ → DecEq (⊎Logic A B)
+          dec⊎ = deriveDecEq ⊎D
 
 apply⊎ : 
   {𝒞 : Set}
@@ -66,8 +72,10 @@ zipMatch⊎ :
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ FTUtils (Code c₀) ⦄
   → ⦃ FTUtils (Constraint c₀) ⦄
+  → ⦃ DecEq (Code c₀) ⦄
   → ⦃ FTUtils (Code c₁) ⦄
   → ⦃ FTUtils (Constraint c₁) ⦄
+  → ⦃ DecEq (Code c₁) ⦄
   → ⊎Logic (Code c₀) (Code c₁)
   → ⊎Logic (Code c₀) (Code c₁)
   → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))

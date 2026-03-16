@@ -13,7 +13,6 @@ open import Term.types
 
 open import Function.Base
 
-
 data ASPAtom (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   wrap : Atom → ℕ → List (Σᵢ 𝒞 Code Code Constraint) → ASPAtom Atom 𝒞 Code Constraint
   forAll : Σᵢ 𝒞 Code Code Constraint → ASPAtom Atom 𝒞 Code Constraint → ASPAtom Atom 𝒞 Code Constraint

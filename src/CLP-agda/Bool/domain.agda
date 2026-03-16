@@ -21,6 +21,9 @@ boolD = deriveDesc BoolLogic
 ℕD : HasDesc ℕ
 ℕD = deriveDesc ℕ
 
+instance  decℕ : DecEq ℕ
+          decℕ = deriveDecEq ℕD
+
 instance  makeVarBoolLogic : MakeVar BoolLogic
           makeVarBoolLogic .fresh = varBool
           makeVarBoolLogic .new = varBool 0
@@ -32,6 +35,9 @@ instance  ftUtilsBool : FTUtils BoolLogic
           ftUtilsBool = deriveFTUtils boolD
 
 foldBool = deriveFold boolD
+
+instance  decBool : DecEq BoolLogic
+          decBool = deriveDecEq boolD
 
 applyBool : ℕ → BoolLogic → BoolLogic → BoolLogic
 applyBool x subst = foldBool true false (λ y → if x ≡ᵇ y then subst else (varBool y))

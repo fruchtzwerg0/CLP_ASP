@@ -148,7 +148,7 @@ clpExecute convertProgram convertQuestion intercept  custom program question =
 -}
 
 clpExecute : 
-  ∀ {ConcreteAtom AbstractAtom 𝒞 validate Code Constraint Custom}
+  ∀ {ConcreteAtom AbstractAtom 𝒞 Code Constraint Custom}
   → ⦃ DecEq 𝒞 ⦄
   → ⦃ FTUtils AbstractAtom ⦄
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
@@ -170,13 +170,13 @@ clpExecute :
     → ⦃ Scheduler 𝒞 Code Constraint ⦄
     → EvalType AbstractAtom 𝒞 Code Constraint Custom)
   → Custom
-  → Clause ConcreteAtom validate 𝒞 Code Constraint
-  → Body ConcreteAtom (validate bodyOfRule) 𝒞 Code Constraint
+  → List (ClauseI ConcreteAtom 𝒞 Code Constraint)
+  → List (Literal ConcreteAtom 𝒞 Code Constraint)
   → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
 clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept custom program question = 
   eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ 
     (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
     custom 
-    ((convertProgram ∘ toIntern ∘ proj₂ ∘ applyVars program) 0) 
-    ((convertQuestion ∘ toLiteralList) question) 
+    (convertProgram program) 
+    (convertQuestion question) 
     []

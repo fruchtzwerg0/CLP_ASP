@@ -37,6 +37,9 @@ FDD = deriveDesc FD
 ℕD : HasDesc ℕ
 ℕD = deriveDesc ℕ
 
+instance  decℕ : DecEq ℕ
+          decℕ = deriveDecEq ℕD
+
 instance  makeVarFD : MakeVar FD
           makeVarFD .fresh = varFD
           makeVarFD .new = varFD 0
@@ -51,6 +54,9 @@ instance  ftUtilsℒFD : FTUtils ℒFD
           ftUtilsℒFD = deriveFTUtils ℒFDD
 
 foldFD = deriveFold FDD
+
+instance  decFD : DecEq FD
+          decFD = deriveDecEq FDD
 
 applyFD : ℕ → FD → FD → FD
 applyFD x subst = foldFD zero suc _＃+_ _＃-_ _＃*_ div (λ y → if x ≡ᵇ y then subst else (varFD y))
