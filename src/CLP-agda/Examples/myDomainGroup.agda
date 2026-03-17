@@ -23,9 +23,11 @@ open import CLP.types
 open import CLP.unifyDisunify
 open import CLP.solverScheduler
 open import CLP.clp
+open import CLP.utilities
 open import Empty.domain
 open import Bool.domain
 open import FD.domain
+open import FD.solver
 open import Sum.domain
 
 open import CLP.domainUniverseGeneration hiding (_>>=_ ; _>>_)
@@ -104,7 +106,8 @@ instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
 
 instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
           solver .solve Bool𝒞 = unifyDisunify Bool𝒞 ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
-          solver .solve FD𝒞 = {! !}
+          solver .solve FD𝒞 = 
+            Data.List.map (Data.List.map (λ {(inj₁ x) → inj₁ (generalize FD𝒞 x) ; (inj₂ x) → inj₂ (generalizeCustom FD𝒞 x)})) ∘ fdSolve
           solver .solve (⊎𝒞 c₀ c₁) = unifyDisunify (⊎𝒞 c₀ c₁) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
 
 instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ

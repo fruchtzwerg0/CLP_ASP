@@ -99,26 +99,26 @@ zipMatchRecursive ((_:-:_ c₁ x ⦃ _ ⦄ ⦃ val ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _
 zipMatchRecursive x | y = Data.List.map (λ {(a , nothing) → a ; (a , just b) → zipMatchRecursive b}) (zipWith _,_ x y)
 zipMatchRecursive [] = []
 
-collectVarsWithType : 
+collectLeaves : 
   {Atom : Set}
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
   → Literal Atom 𝒞 Code Constraint
   → List (Σᵢ 𝒞 Code Code Constraint)
-collectVarsWithType (constraint (inj₁ (_:-:_ c (x =ℒ y) ⦃ _ ⦄ ⦃ val ⦄ ⦃ _ ⦄ ⦃ _ ⦄))) = 
+collectLeaves (constraint (inj₁ (_:-:_ c (x =ℒ y) ⦃ _ ⦄ ⦃ val ⦄ ⦃ _ ⦄ ⦃ _ ⦄))) = 
   zipMatchRecursive ((_:-:_ c x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ c y ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-collectVarsWithType (constraint (inj₁ (_:-:_ c (x ≠ℒ y) ⦃ _ ⦄ ⦃ val ⦄ ⦃ _ ⦄ ⦃ _ ⦄))) = 
+collectLeaves (constraint (inj₁ (_:-:_ c (x ≠ℒ y) ⦃ _ ⦄ ⦃ val ⦄ ⦃ _ ⦄ ⦃ _ ⦄))) = 
   zipMatchRecursive ((_:-:_ c x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ c y ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-collectVarsWithType (constraint (inj₂ (_:-:_ c (default l) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ cn ⦄))) with zipMatch cn c l l 
+collectLeaves (constraint (inj₂ (_:-:_ c (default l) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ cn ⦄))) with zipMatch cn c l l 
 ... | just x = (zipMatchRecursive ∘ Data.List.map (λ { (_:-:_ c₁ (x =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) 
                                                      ; (_:-:_ c₁ (x ≠ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) })) x
 ... | nothing = []
-collectVarsWithType (constraint (inj₂ (_:-:_ c (dual l) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ cn ⦄))) with zipMatch cn c l l 
+collectLeaves (constraint (inj₂ (_:-:_ c (dual l) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ cn ⦄))) with zipMatch cn c l l 
 ... | just x = (zipMatchRecursive ∘ Data.List.map (λ { (_:-:_ c₁ (x =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) 
                                                      ; (_:-:_ c₁ (x ≠ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) })) x
 ... | nothing = []
-collectVarsWithType (atom ⦃ _ ⦄ ⦃ cn ⦄ at) with zipMatch cn at at
+collectLeaves (atom ⦃ _ ⦄ ⦃ cn ⦄ at) with zipMatch cn at at
 ... | just x = (zipMatchRecursive ∘ Data.List.map (λ { (_:-:_ c₁ (x =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) 
                                                      ; (_:-:_ c₁ (x ≠ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) })) x
 ... | nothing = []
@@ -133,8 +133,8 @@ existentialVars :
   → List (Σᵢ 𝒞 Code Code Constraint)
 existentialVars (_:--_ hea bod ⦃ ft ⦄ ⦃ at ⦄) = 
   without equal
-    ((concat ∘ Data.List.map collectVarsWithType) bod)
-    ((collectVarsWithType ∘ atom ⦃ ft ⦄ ⦃ at ⦄) hea)
+    ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ concat ∘ Data.List.map collectLeaves) bod)
+    ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom ⦃ ft ⦄ ⦃ at ⦄) hea)
 
 negateConstraint : 
   {Atom : Set}

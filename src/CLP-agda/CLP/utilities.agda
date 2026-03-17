@@ -205,3 +205,14 @@ generalize : ∀ {𝒞 Code Constraint}
  → (ℒ ∘ Code) c 
  → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint
 generalize c p  = _:-:_ c p
+
+generalizeCustom : ∀ {𝒞 Code Constraint}
+ → (c : 𝒞)
+ → ⦃ FTUtils (Code c) ⦄
+ → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+ → ⦃ FTUtils (Constraint c) ⦄ 
+ → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄ 
+ → ⦃ DecEq (Code c) ⦄
+ → (Dual ∘ Constraint) c 
+ → Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint
+generalizeCustom c p  = _:-:_ c p

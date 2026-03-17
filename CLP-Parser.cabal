@@ -25,7 +25,6 @@ source-repository head
 
 library
   exposed-modules:
-      Parser
       MAlonzo.Code.Agda.Builtin.Bool
       MAlonzo.Code.Agda.Builtin.Char
       MAlonzo.Code.Agda.Builtin.Char.Properties
@@ -278,7 +277,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
-    , megaparsec
+    , process
     , mtl
     , template-haskell
     , text
@@ -297,7 +296,7 @@ executable CLP-Parser-exe
       CLP-Parser
     , base >=4.7 && <5
     , containers
-    , megaparsec
+    , process
     , mtl
     , template-haskell
     , text
@@ -317,7 +316,7 @@ test-suite CLP-Parser-test
       CLP-Parser
     , base >=4.7 && <5
     , containers
-    , megaparsec
+    , process
     , mtl
     , template-haskell
     , text

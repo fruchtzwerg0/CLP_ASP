@@ -26,6 +26,7 @@ open import Function.Base
 open import Generics
 
 open import ASP.dual
+open import ASP.loops
 
 index : {A : Set} → ℕ → List A → Maybe A
 index _ [] = nothing
@@ -75,6 +76,7 @@ getAdjacent ⦃ at ⦄ program (a , n) =
 findOLON₀ :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)
   → (stack : List (Atom × ℕ))
   → (visited : List (Atom × ℕ))
@@ -83,7 +85,10 @@ findOLON₀ :
 findOLON₀ ⦃ at ⦄ program stack visited curr 
   with takeWhile1 ((λ x y → equalAtom ⦃ at ⦄ (proj₁ x) (proj₁ y)) curr) stack | 
        any ((λ x y → equalAtom ⦃ at ⦄ (proj₁ x) (proj₁ y)) curr) visited
-... | (y ∷ ys) | _ = curr ∷ y ∷ ys , visited
+... | (y ∷ ys) | _ = 
+  if mod ((length ∘ filterᵇ (isNot ∘ proj₁)) (y ∷ ys)) 2 ≡ᵇ 1 
+  then curr ∷ y ∷ ys , visited
+  else [] , visited
 ... | [] | true = [] , visited
 ... | [] | false with getAdjacent program curr
 ... | nothing = [] , visited
@@ -94,6 +99,7 @@ findOLON₀ ⦃ at ⦄ program stack visited curr
 findOLON :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)
   → List (ClauseI Atom 𝒞 Code Constraint)
 findOLON ⦃ at ⦄ program = ((catMaybes ∘ (Data.List.map ∘ toClause) program) ∘ proj₁ ∘ foldr (λ clause (acc , visited) → 
@@ -154,10 +160,10 @@ makeTopLevelBodyForNMR :
 makeTopLevelBodyForNMR (n , x) with (ASP.types.isFalse ∘ ClauseI.head) x
 makeTopLevelBodyForNMR ⦃ ft ⦄ ⦃ at ⦄ (n , x) | true = (ClauseI.head ∘ toChk) (n , x)
 makeTopLevelBodyForNMR ⦃ ft ⦄ ⦃ at ⦄ (n , x) | false = 
-  if (_≡ᵇ_ 0 ∘ length ∘ collectVarsWithType ∘ atom ⦃ ft ⦄ ⦃ at ⦄ ∘ ClauseI.head) x
+  if (_≡ᵇ_ 0 ∘ length ∘ filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom ⦃ ft ⦄ ⦃ at ⦄ ∘ ClauseI.head) x
   then (ClauseI.head ∘ toChk) (n , x)
   else (buildForAll (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) forAll n
-    ((collectVarsWithType ∘ atom ⦃ ft ⦄ ⦃ at ⦄ ∘ ClauseI.head) x) [] ∘ ClauseI.head ∘ toChk) (n , x)
+    ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom ⦃ ft ⦄ ⦃ at ⦄ ∘ ClauseI.head) x) [] ∘ ClauseI.head ∘ toChk) (n , x)
 
 computeNMR : 
   ∀ {Atom 𝒞 Code Constraint}
