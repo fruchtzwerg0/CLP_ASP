@@ -57,6 +57,7 @@ defaultSchedule₀ ⦃ dec ⦄ ((_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) ∷
       y) y)) res
 defaultSchedule₀ [] unifications = unifications ∷ []
 
+-- scheduler schedules the different solvers when multiple are used.
 defaultSchedule : 
   ∀ {𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄

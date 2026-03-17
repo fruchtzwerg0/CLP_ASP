@@ -31,6 +31,8 @@ open import ASP.asp
 
 open import Examples.myDomainGroup
 
+-- "types" of atoms to be used by the logic program
+-- comparable to type declarations in mercury (also hindley-milner)
 data Functor : Set where
   fnot    : Functor → Functor
   validStream : FD → ⊎Logic BoolLogic BoolLogic → Functor
@@ -43,16 +45,22 @@ data Functor : Set where
 functorD : HasDesc Functor
 functorD = deriveDesc Functor
 
+-- we need to derive ftUtils for our atom type
 instance  ftUtilsFunctor : FTUtils Functor
           ftUtilsFunctor = deriveFTUtils functorD
 
+-- a fold to be used for increment later.
 foldFunctor = deriveFold functorD
 
+-- custom validation scheme, that can be used to restrict the user from certain constructions that would typecheck.
+-- in ASP, we could use it to restrict fnot only to be used in the body, and ffalse only in the head.
+-- The top type ⊤ would be used for constructions that are allowed, and the bottom type ⊥ for constructions that are illegal.
 validate : Where → Functor → Set
 validate _ (fnot _) = ⊤
 validate _ ffalse = ⊤
 validate _ _ = ⊤
 
+-- We only need to provide this if we use ASP.
 instance  aspUtils : ASPUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           aspUtils .not = fnot
           aspUtils .isNot (fnot _) = true
@@ -69,6 +77,7 @@ instance  aspUtils : ASPUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           aspUtils .fillWithVars (incompt x y) n = incompt (var⊎ n) ((var⊎ ∘ suc) n)
           aspUtils .fillWithVars ffalse n = ffalse
 
+-- These are general functions that we need in the generic CLP scheme.
 instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           atomUtils .zipMatch (fnot x) (fnot y) = zipMatch atomUtils x y
           atomUtils .zipMatch (validStream a b) (validStream x y) = 
@@ -93,6 +102,7 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
               (λ a b → incompt (increment⊎ n a) (increment⊎ n b))
               ffalse
 
+-- the streamreasoning example taken from "Constraint Answer Set Programming without Grounding"
 module program where
   open CLP.types
 

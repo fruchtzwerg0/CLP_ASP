@@ -56,6 +56,8 @@ cForall₀ {Atom}{C}{Code}{Constraint} v ((_ , answer) ∷ answers) store with
 ... | [] = true
 ... | xs = cForall₀ v answers xs
 
+-- The c-forall algorithm as specified by salazar, marple and gupta
+
 cForall : 
   ∀ {Atom 𝒞 Code Constraint}
   → {Custom : Set}

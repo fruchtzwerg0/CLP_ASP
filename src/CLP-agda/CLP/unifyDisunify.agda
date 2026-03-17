@@ -210,6 +210,7 @@ unifyDisunify₀ witness (r ∷ rs) rs0 unifications dis rest | just l =
       (((catMaybes ∘ Data.List.map (λ {(inj₁ x) → just x ; (inj₂ _) → nothing}) ∘ catMaybes ∘ Data.List.map (getElse witness) ∘ Data.List.map inj₁) newUnif) ++ rest))) l
 unifyDisunify₀ witness [] _ unifications dis rest = (Data.List.map inj₁ rest ++ Data.List.map (inj₁ ∘ (λ l → _:-:_ witness l)) unifications) ∷ []
 
+-- generic unification and disunification usable with any type.
 unifyDisunify : 
   ∀ {𝒞 Code Constraint}
   → (c : 𝒞) 

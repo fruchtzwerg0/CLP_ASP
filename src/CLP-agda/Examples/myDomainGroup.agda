@@ -32,6 +32,10 @@ open import Sum.domain
 
 open import CLP.domainUniverseGeneration hiding (_>>=_ ; _>>_)
 
+-- In here, an example domain group is created, outlining the steps needed to be taken for it to be usable.
+
+-- The first step is deriving the universe code type. The name My𝒞 will be the name of the type, and Bool𝒞 FD𝒞 ⊎𝒞
+-- will be the constructors. The last parameter maps codes to actual types you want to use.
 unquoteDecl data My𝒞 constructor Bool𝒞 FD𝒞 ⊎𝒞 =
   makeUniverse
     My𝒞
@@ -39,6 +43,8 @@ unquoteDecl data My𝒞 constructor Bool𝒞 FD𝒞 ⊎𝒞 =
       (FD𝒞   , quote FD       ) ∷
       (⊎𝒞    , quote ⊎Logic   ) ∷ [] )
 
+-- For the universe to be usable, we need to derive a decoder function. The parameters stay thet same, but we need to quote 
+-- the things we already have.
 unquoteDecl ⟦_⟧ =
   makeDecoder ⟦_⟧ (quote My𝒞)
     ( (quote Bool𝒞 , quote BoolLogic) ∷
@@ -46,22 +52,28 @@ unquoteDecl ⟦_⟧ =
       (quote ⊎𝒞     , quote ⊎Logic ) ∷
       [] )
 
+-- The mapper from code to constraint type we need to define manually.
+-- In this case, Bool𝒞 and ⊎𝒞 don't have constraint domains, therefore we provide the bottom type.
+-- FD has the ℒFD constraint type.
 ⟦_⟧ℒ : My𝒞 → Set
 ⟦ Bool𝒞 ⟧ℒ    = ⊥
 ⟦ FD𝒞 ⟧ℒ    = ℒFD
 ⟦ ⊎𝒞 c₀ c₁ ⟧ℒ  = ⊥
 
+-- Helper function we need for the definition of zipMatch for ⊎𝒞
 unquoteDecl mapType =
   makeMapper mapType (quote My𝒞) (quote ⟦_⟧) (quote FTUtils)
     ( (quote Bool𝒞 , quote ftUtilsBool) ∷
       (quote FD𝒞   , quote ftUtilsFD  ) ∷
       (quote ⊎𝒞    , quote ftUtils⊎   ) ∷ [] )
 
+-- Helper function we need for the definition of zipMatch for ⊎𝒞
 mapConstraint : (c : My𝒞) → FTUtils ⟦ c ⟧ℒ
 mapConstraint Bool𝒞 = ftUtils⊥
 mapConstraint FD𝒞        = ftUtilsℒFD
 mapConstraint (⊎𝒞 c₀ c₁) = ftUtils⊥
 
+-- Helper function we need for the definition of zipMatch for ⊎𝒞
 unquoteDecl mapDecEq =
   makeMapper mapDecEq (quote My𝒞) (quote ⟦_⟧) (quote DecEq)
     ( (quote Bool𝒞 , quote decBool) ∷
@@ -71,9 +83,12 @@ unquoteDecl mapDecEq =
 indexD : HasDesc My𝒞
 indexD = deriveDesc My𝒞
 
+-- We need decidable equality for our universe type.
 instance  decMy𝒞 : DecEq My𝒞
           decMy𝒞 = deriveDecEq indexD
 
+-- We need to provide constraint utilities for all the constraint types in our universe.
+-- These are provided in the same file of the domains, so we just need to glue it together.
 instance  constraintUtils : ConstraintUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
           constraintUtils .zipMatch Bool𝒞 ()
           constraintUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchℒFD c
@@ -86,6 +101,8 @@ instance  constraintUtils : ConstraintUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
           constraintUtils .apply _ (⊎𝒞 c₀ c₁) _ _ ()
           constraintUtils .apply _ _ _ _ expr = expr
 
+-- We need to provide value utilities for all the domain types in our universe.
+-- These are provided in the same file of the domains, so we just need to glue it together.
 instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
           valueUtils .zipMatch Bool𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ Bool𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchBool c
           valueUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchFD c
@@ -104,11 +121,17 @@ instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
               (λ x → q (apply valueUtils i₀ c₁ n subst x))
               var⊎
 
+-- Here, we can use pattern matching to map domains to solvers. 
+-- unifyDisunify is part of the abstract CLP scheme, and domain-agnostic.
+-- Therefore it can be used for any domain and acts as a catch-all when we don't have any domain specific solver, 
+-- and if we don't have a custom constraint domain.
+-- FD has its own solver. Here, it needs to be converted back to the general dependent type.
 instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
           solver .solve Bool𝒞 = unifyDisunify Bool𝒞 ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
           solver .solve FD𝒞 = 
             Data.List.map (Data.List.map (λ {(inj₁ x) → inj₁ (generalize FD𝒞 x) ; (inj₂ x) → inj₂ (generalizeCustom FD𝒞 x)})) ∘ fdSolve
           solver .solve (⊎𝒞 c₀ c₁) = unifyDisunify (⊎𝒞 c₀ c₁) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
 
+-- It is not recommended to modify the scheduler, defaultSchedule is perfectly safe and usable for any domain group.
 instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ
           scheduler .schedule = defaultSchedule ⦃ _ ⦄ ⦃ _ ⦄

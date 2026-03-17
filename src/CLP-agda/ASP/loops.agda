@@ -37,6 +37,8 @@ mod n m with compare n m
 ... | less _ _ = n
 ... | _ = mod (n ∸ m) m
 
+-- Checks the CHS for already proven atoms.
+
 checkCHS :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
@@ -55,6 +57,9 @@ checkCHS ⦃ dec ⦄ ⦃ at ⦄ constraints x y with
   (inj₁ ∘ {!   !} ∘ 
   filterᵇ (null ∘ schedule ∘ concat ∘ Data.List.map (addToConstraintStore constraints) ∘ Data.List.map inj₁) ∘ catMaybes ∘ Data.List.map (zipMatch at (toggle y))) x
 -- Data.List.map (Data.List.map negateConstraint)
+
+-- Checks the call stack for loops
+
 checkLoops :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
@@ -94,6 +99,9 @@ checkASP :
   → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → (ASPAtom Atom 𝒞 Code Constraint)
   → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint))
+
+-- The intercepter used for ASP. Gets called by eval instead of a recursive call, and allows for injection of additional behaviour
+-- In this case, co-SLD resolution, the forall meta predicate and the dynamic chs and loop checks are implemented in here.
 
 {-# TERMINATING #-}
 interceptASP :

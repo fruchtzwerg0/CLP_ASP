@@ -274,6 +274,8 @@ groupByKey :
 groupByKey key eq =
   foldr (insertGroup key eq) []
 
+-- The dual rule generation algorithm
+
 computeDuals : 
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄

@@ -1,5 +1,7 @@
 {-# OPTIONS --allow-unsolved-metas #-}
 
+-- general top-level aggregator for asp usage
+
 module ASP.asp where
 
 open import CLP.types hiding (_>>=_)
@@ -34,6 +36,8 @@ open import ASP.dual
 open import ASP.nmr
 open import ASP.loops
 
+-- FTUtils needs to be implemented also for ASPAtom
+
 instance aspFT : ∀ {Atom 𝒞 Code Constraint} → ⦃ FTUtils Atom ⦄ → FTUtils (ASPAtom Atom 𝒞 Code Constraint)
          aspFT .functor (wrap at _ _) = functor at
          aspFT .functor (forAll _ _) = "forAll"
@@ -66,6 +70,8 @@ zipMatchExi ((_:-:_ c₀ x ⦃ _ ⦄ ⦃ val ⦄) ∷ xs) ((_:-:_ c₁ y ⦃ _ �
 ... | yes refl = zipMatchExi xs ys Data.Maybe.>>= (just ∘ _∷_ (_:-:_ c₀ (x =ℒ y) ⦃ _ ⦄ ⦃ val ⦄))
 ... | no _ = nothing
 
+-- AtomUtils needs to be implemented for ASPAtom
+
 instance aspAtom : ∀ {Atom 𝒞 Code Constraint} → ⦃ DecEq 𝒞 ⦄ → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄ → AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
          aspAtom {_}{C}{Code}{Constraint} ⦃ _ ⦄ ⦃ at ⦄ .zipMatch (wrap at₀ n₀ x₀) (wrap at₁ n₁ x₁) = 
           if n₀ ≡ᵇ n₁
@@ -83,6 +89,8 @@ instance aspAtom : ∀ {Atom 𝒞 Code Constraint} → ⦃ DecEq 𝒞 ⦄ → �
          aspAtom .increment n (forAll x y) = forAll (incrementExi n x) (increment aspAtom n y)
          aspAtom .increment n nmrCheck = nmrCheck
          aspAtom .increment n (chk a b x) = chk a b (Data.List.map (incrementExi n) x)
+
+-- ASPUtils needs to be implemented for ASPAtom
 
 instance  aspAtomUtils : ∀ {Atom 𝒞 Code Constraint} → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄ → ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
           aspAtomUtils .ASP.types.not (wrap at a b) = wrap (ASP.types.not at) a b
@@ -103,6 +111,13 @@ instance  aspAtomUtils : ∀ {Atom 𝒞 Code Constraint} → ⦃ ASPUtils Atom �
           aspAtomUtils .fillWithVars nmrCheck n = nmrCheck
           aspAtomUtils .fillWithVars (chk a b c) n = chk a b c
 
+-- Wrapper around clpExecute with parameterization for ASP-behavior. Entry point for executions of asp programs.
+-- The Custom state in this case is (List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint))
+-- The first list is the chs (Coinductive Hypothesis Set), and the second one is the current call stack (important for loop detection)
+-- The conversion from CST to AST in this case is a concatenation of computeNMR and computeDual (nmr and dual rule synthesis)
+-- The addNMR adds the nmr call to the end of the goal.
+-- The intercepter is the ASPintercepter.
+-- The initial chs , callstack tuple is a tuple of empty lists.
 aspExecute : 
   ∀ {Atom 𝒞 validate Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
