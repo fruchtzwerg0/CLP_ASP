@@ -1,4 +1,4 @@
-module Term.unifyDisunify where
+module CLP.unifyDisunify where
 
 open import Agda.Builtin.String
 
@@ -11,9 +11,9 @@ open import Data.Product
 open import Data.Empty
 open import Function.Base
 
-open import Term.types hiding (_∧_)
-open import Term.ftUtilsDerivation
-open import Term.utilities
+open import CLP.types hiding (_∧_)
+open import CLP.ftUtilsDerivation
+open import CLP.utilities
 
 open import Relation.Nullary
 open import Relation.Nullary.Decidable as Decidable

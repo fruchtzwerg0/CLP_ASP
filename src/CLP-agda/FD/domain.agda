@@ -7,8 +7,8 @@ open import Data.List
 open import Function.Base
 
 open import Generics
-open import Term.ftUtilsDerivation
-open import Term.types
+open import CLP.ftUtilsDerivation
+open import CLP.types
 
 data FD : Set where
   zero : FD
@@ -77,6 +77,11 @@ foldℒFD = deriveFold ℒFDD
 
 applyℒFD : ℕ → FD → ℒFD → ℒFD
 applyℒFD x subst = foldℒFD (λ a b → applyFD x subst a ≤FD applyFD x subst b) (λ a b → applyFD x subst a ≥FD applyFD x subst b)
+
+zipMatchℒFD : ℒFD → ℒFD → (Maybe ∘ List ∘ ℒ) FD
+zipMatchℒFD (x ≤FD y) (a ≤FD b) = just (x =ℒ a ∷ y =ℒ b ∷ [])
+zipMatchℒFD (x ≥FD y) (a ≥FD b) = just (x =ℒ a ∷ y =ℒ b ∷ [])
+zipMatchℒFD _ _ = nothing
 
 incrementℒFD : ℕ → ℒFD → ℒFD
 incrementℒFD x = foldℒFD (λ a b → incrementFD x a ≤FD incrementFD x b) (λ a b → incrementFD x a ≥FD incrementFD x b)

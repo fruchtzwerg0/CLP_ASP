@@ -1,6 +1,6 @@
 {-# OPTIONS --safe #-}
 
-module Term.domainUniverseGeneration where
+module CLP.domainUniverseGeneration where
 
 open import Agda.Primitive
 open import Agda.Builtin.Nat
@@ -25,18 +25,6 @@ mapTC f (x ∷ xs) =
   f x >>= λ y →
   mapTC f xs >>= λ ys →
   returnTC (y ∷ ys)
-
-zipTC :
-  {A B C : Set} →
-  (A → B → TC C) →
-  List A → List B → TC (List C)
-zipTC f [] [] = returnTC []
-zipTC f (x ∷ xs) (y ∷ ys) =
-  f x y >>= λ z →
-  zipTC f xs ys >>= λ zs →
-  returnTC (z ∷ zs)
-zipTC _ _ _ =
-  typeError (strErr "constructor/type mismatch" ∷ [])
 
 isData : Definition → Bool
 isData (data-type _ _) = true

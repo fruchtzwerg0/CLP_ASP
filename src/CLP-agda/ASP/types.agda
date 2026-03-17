@@ -9,7 +9,7 @@ open import Data.List hiding (head)
 open import Data.Product
 open import Data.Sum
 
-open import Term.types
+open import CLP.types
 
 open import Function.Base
 

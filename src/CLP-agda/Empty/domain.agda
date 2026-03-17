@@ -1,7 +1,7 @@
 module Empty.domain where
 
 open import Data.Empty
-open import Term.ftUtilsDerivation
+open import CLP.ftUtilsDerivation
 
 instance  ftUtils⊥ : FTUtils ⊥
           ftUtils⊥ .functor = ⊥-elim

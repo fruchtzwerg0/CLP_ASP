@@ -1,4 +1,4 @@
-module Term.types where
+module CLP.types where
 
 open import Data.Bool hiding (not ; _∧_)
 open import Data.Char
@@ -9,7 +9,7 @@ open import Data.List hiding (head)
 open import Data.Product
 open import Data.Sum
 
-open import Term.ftUtilsDerivation
+open import CLP.ftUtilsDerivation
 
 open import Relation.Nullary
 open import Relation.Nullary.Decidable as Decidable

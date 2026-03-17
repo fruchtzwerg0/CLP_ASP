@@ -1,5 +1,5 @@
 {-# OPTIONS --safe #-}
-module Term.ftUtilsDerivation where
+module CLP.ftUtilsDerivation where
 
 open import Generics.Prelude hiding (lookup)
 open import Generics.Telescope

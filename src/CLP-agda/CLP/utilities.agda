@@ -1,7 +1,7 @@
-module Term.utilities where
+module CLP.utilities where
 
-open import Term.ftUtilsDerivation
-open import Term.types
+open import CLP.ftUtilsDerivation
+open import CLP.types
 open import Data.Bool hiding (_≟_)
 open import Data.Nat 
   using (ℕ; _≡ᵇ_; _⊓_; _+_)

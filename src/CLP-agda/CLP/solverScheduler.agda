@@ -1,10 +1,10 @@
 {-# OPTIONS --allow-unsolved-metas #-}
 
-module Term.solverScheduler where
+module CLP.solverScheduler where
 
-open import Term.types
-open import Term.utilities
-open import Term.ftUtilsDerivation
+open import CLP.types
+open import CLP.utilities
+open import CLP.ftUtilsDerivation
 
 open import Data.Bool hiding (_≟_)
 open import Data.List

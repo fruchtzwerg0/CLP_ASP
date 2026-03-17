@@ -1,4 +1,6 @@
-module Term.streamreasoning where
+{-# OPTIONS --allow-unsolved-metas #-}
+
+module Examples.myDomainGroup where
 
 open import Data.Bool hiding (_≟_ ; _∧_ ; not)
 open import Data.Nat hiding (_≟_)
@@ -16,20 +18,17 @@ open import Relation.Nullary
 open import Relation.Nullary.Decidable as Decidable
 open import Relation.Binary.PropositionalEquality
 
-open import Term.ftUtilsDerivation
-open import Term.types
-open import Term.unifyDisunify
-open import Term.solverScheduler
-open import Term.clp
+open import CLP.ftUtilsDerivation
+open import CLP.types
+open import CLP.unifyDisunify
+open import CLP.solverScheduler
+open import CLP.clp
 open import Empty.domain
 open import Bool.domain
 open import FD.domain
 open import Sum.domain
 
-open import ASP.types
-open import ASP.asp
-
-open import Term.domainUniverseGeneration hiding (_>>=_ ; _>>_)
+open import CLP.domainUniverseGeneration hiding (_>>=_ ; _>>_)
 
 unquoteDecl data My𝒞 constructor Bool𝒞 FD𝒞 ⊎𝒞 =
   makeUniverse
@@ -73,41 +72,9 @@ indexD = deriveDesc My𝒞
 instance  decMy𝒞 : DecEq My𝒞
           decMy𝒞 = deriveDecEq indexD
 
-data Functor : Set where
-  fnot    : Functor → Functor
-  validStream : FD → ⊎Logic BoolLogic BoolLogic → Functor
-  stream : FD → ⊎Logic BoolLogic BoolLogic → Functor
-  cancelled : FD → ⊎Logic BoolLogic BoolLogic → Functor
-  higherPrio : FD → FD → Functor
-  incompt : ⊎Logic BoolLogic BoolLogic → ⊎Logic BoolLogic BoolLogic → Functor
-  ffalse  : Functor
-
-functorD : HasDesc Functor
-functorD = deriveDesc Functor
-
-instance  ftUtilsFunctor : FTUtils Functor
-          ftUtilsFunctor = deriveFTUtils functorD
-
-foldFunctor = deriveFold functorD
-
-validate : Where → Functor → Set
-validate _ (fnot _) = ⊤
-validate _ ffalse = ⊤
-validate _ _ = ⊤
-
-instance  aspUtils : ASPUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          aspUtils .not = fnot
-          aspUtils .isNot (fnot _) = true
-          aspUtils .isNot _ = false
-          aspUtils .isFalse ffalse = true
-          aspUtils .isFalse _ = false
-          aspUtils .toggle (fnot x) = x
-          aspUtils .toggle x = fnot x
-          aspUtils .fillWithVars _ = {!   !}
-
 instance  constraintUtils : ConstraintUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
           constraintUtils .zipMatch Bool𝒞 ()
-          constraintUtils .zipMatch FD𝒞 = {!   !}
+          constraintUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchℒFD c
           constraintUtils .zipMatch (⊎𝒞 c₀ c₁) ()
           constraintUtils .increment Bool𝒞 _ ()
           constraintUtils .increment FD𝒞 = incrementℒFD
@@ -135,30 +102,6 @@ instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
               (λ x → q (apply valueUtils i₀ c₁ n subst x))
               var⊎
 
-instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          atomUtils .zipMatch (fnot x) (fnot y) = zipMatch atomUtils x y
-          atomUtils .zipMatch (validStream a b) (validStream x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-          atomUtils .zipMatch (stream a b) (stream x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-          atomUtils .zipMatch (cancelled a b) (cancelled x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-          atomUtils .zipMatch (higherPrio a b) (higherPrio x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ [])
-          atomUtils .zipMatch (incompt a b) (incompt x y) = 
-            just ((_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (a =ℒ x) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-          atomUtils .zipMatch ffalse ffalse = just []
-          atomUtils .zipMatch _ _ = nothing
-          atomUtils .increment n = 
-            foldFunctor 
-              fnot 
-              (λ a b → validStream (incrementFD n a) (increment⊎ n b))
-              (λ a b → stream (incrementFD n a) (increment⊎ n b))
-              (λ a b → cancelled (incrementFD n a) (increment⊎ n b))
-              (λ a b → higherPrio (incrementFD n a) (incrementFD n b))
-              (λ a b → incompt (increment⊎ n a) (increment⊎ n b))
-              ffalse
-
 instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
           solver .solve Bool𝒞 = unifyDisunify Bool𝒞 ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
           solver .solve FD𝒞 = {! !}
@@ -166,47 +109,3 @@ instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
 
 instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ
           scheduler .schedule = defaultSchedule ⦃ _ ⦄ ⦃ _ ⦄
-
-module program where
-  open Term.types
-
-  streamReasoning :
-    Clause Functor validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
-  streamReasoning = do
-    P ← new
-    Data ← new
-
-    validStream P Data :-
-        stream P Data
-      ∧  not (cancelled P Data) •
-    
-    P1 ← new
-    Data1 ← new
-
-    cancelled P Data :-
-        higherPrio P1 P
-      ∧  stream P1 Data1
-      ∧  incompt Data Data1 •
-    
-    PHi ← new
-    PLo ← new
-
-    higherPrio PHi PLo :-
-      (◇ (FD𝒞 :-: (PHi ＃> PLo))) ↼•
-    
-    X ← new
-
-    incompt (p X) (q X) •
-    incompt (q X) (p X) •
-
-    stream zero (p X) •
-    stream (suc zero) (q true) •
-    stream (suc (suc zero)) (q false) •
-    stream (suc (suc (suc zero))) (p true) •
-
-  question :
-    Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
-  question = 
-    validStream (varFD 0) (var⊎ 1) •
-
-  execute = aspExecute streamReasoning question

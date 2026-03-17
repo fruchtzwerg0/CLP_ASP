@@ -2,9 +2,9 @@
 
 module ASP.loops where
 
-open import Term.types hiding (_>>=_)
-open import Term.ftUtilsDerivation
-open import Term.utilities
+open import CLP.types hiding (_>>=_)
+open import CLP.ftUtilsDerivation
+open import CLP.utilities
 open import ASP.types
 open import Views.find
 open import Views.findall
@@ -25,7 +25,7 @@ open import Function.Base
 
 open import Generics
 
-open import Term.clp
+open import CLP.clp
 
 open import ASP.dual
 open import ASP.cforall

@@ -2,9 +2,9 @@
 
 module ASP.asp where
 
-open import Term.types hiding (_>>=_)
-open import Term.ftUtilsDerivation
-open import Term.utilities
+open import CLP.types hiding (_>>=_)
+open import CLP.ftUtilsDerivation
+open import CLP.utilities
 open import ASP.types
 open import Views.find
 open import Views.findall
@@ -23,9 +23,13 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl)
 open import Function.Base
 
+open import Relation.Nullary
+open import Relation.Nullary.Decidable as Decidable
+open import Relation.Binary.PropositionalEquality
+
 open import Generics
 
-open import Term.clp
+open import CLP.clp
 open import ASP.dual
 open import ASP.nmr
 open import ASP.loops
@@ -49,19 +53,33 @@ instance aspFT : ∀ {Atom 𝒞 Code Constraint} → ⦃ FTUtils Atom ⦄ → FT
 incrementExi : ∀ {𝒞 Code Constraint} → ℕ → Σᵢ 𝒞 Code Code Constraint → Σᵢ 𝒞 Code Code Constraint
 incrementExi n (_:-:_ c x ⦃ _ ⦄ ⦃ val ⦄) = (_:-:_ c (increment val c n x))
 
-instance aspAtom : ∀ {Atom 𝒞 Code Constraint} → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄ → AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
-         aspAtom {_}{C}{Code}{Constraint} ⦃ at ⦄ .zipMatch (wrap at₀ n₀ x₀) (wrap at₁ n₁ x₁) = 
+zipMatchExi : 
+  ∀ {𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄ 
+  → List (Σᵢ 𝒞 Code Code Constraint) 
+  → List (Σᵢ 𝒞 Code Code Constraint) 
+  → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
+zipMatchExi (x ∷ xs) [] = nothing
+zipMatchExi [] (x ∷ xs) = nothing
+zipMatchExi [] [] = just []
+zipMatchExi ((_:-:_ c₀ x ⦃ _ ⦄ ⦃ val ⦄) ∷ xs) ((_:-:_ c₁ y ⦃ _ ⦄ ⦃ _ ⦄) ∷ ys) with c₀ ≟ c₁
+... | yes refl = zipMatchExi xs ys Data.Maybe.>>= (just ∘ _∷_ (_:-:_ c₀ (x =ℒ y) ⦃ _ ⦄ ⦃ val ⦄))
+... | no _ = nothing
+
+instance aspAtom : ∀ {Atom 𝒞 Code Constraint} → ⦃ DecEq 𝒞 ⦄ → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄ → AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
+         aspAtom {_}{C}{Code}{Constraint} ⦃ _ ⦄ ⦃ at ⦄ .zipMatch (wrap at₀ n₀ x₀) (wrap at₁ n₁ x₁) = 
           if n₀ ≡ᵇ n₁
-          then zipMatch at at₀ at₁ Data.Maybe.>>= {!   !}
+          then zipMatch at at₀ at₁ Data.Maybe.>>= (λ y → zipMatchExi x₀ x₁ Data.Maybe.>>= (λ z → just (y ++ z)))
           else nothing
-         aspAtom {_}{C}{Code}{Constraint} .zipMatch (forAll x₀ y₀) (forAll x₁ y₁) = zipMatch aspAtom y₀ y₁ Data.Maybe.>>= {!   !}
+         aspAtom {_}{C}{Code}{Constraint} .zipMatch (forAll x₀ y₀) (forAll x₁ y₁) = 
+          zipMatch aspAtom y₀ y₁ Data.Maybe.>>= (λ y → zipMatchExi (x₀ ∷ []) (x₁ ∷ []) Data.Maybe.>>= (λ z → just (y ++ z)))
          aspAtom .zipMatch nmrCheck nmrCheck = just []
          aspAtom {_}{C}{Code}{Constraint} ⦃ at ⦄ .zipMatch (chk a₀ b₀ x₀) (chk a₁ b₁ x₁) = 
           if (a₀ ≡ᵇ a₁) Data.Bool.∧ (b₀ ≡ᵇ b₁)
-          then {!   !}
+          then zipMatchExi x₀ x₁
           else nothing
          aspAtom .zipMatch _ _ = nothing
-         aspAtom ⦃ att ⦄ .increment n (wrap at y x) = wrap (increment att n at) y (Data.List.map (incrementExi n) x)
+         aspAtom ⦃ _ ⦄ ⦃ att ⦄ .increment n (wrap at y x) = wrap (increment att n at) y (Data.List.map (incrementExi n) x)
          aspAtom .increment n (forAll x y) = forAll (incrementExi n x) (increment aspAtom n y)
          aspAtom .increment n nmrCheck = nmrCheck
          aspAtom .increment n (chk a b x) = chk a b (Data.List.map (incrementExi n) x)
@@ -80,7 +98,10 @@ instance  aspAtomUtils : ∀ {Atom 𝒞 Code Constraint} → ⦃ ASPUtils Atom �
           aspAtomUtils .toggle (forAll a b) = forAll a (toggle b)
           aspAtomUtils .toggle nmrCheck = nmrCheck
           aspAtomUtils .toggle (chk a b c) = chk a b c
-          aspAtomUtils .fillWithVars _ = {!   !}
+          aspAtomUtils .fillWithVars (wrap at a b) n = wrap (fillWithVars at n) a b
+          aspAtomUtils .fillWithVars (forAll a b) n = forAll a (fillWithVars b n)
+          aspAtomUtils .fillWithVars nmrCheck n = nmrCheck
+          aspAtomUtils .fillWithVars (chk a b c) n = chk a b c
 
 aspExecute : 
   ∀ {Atom 𝒞 validate Code Constraint}

@@ -1,0 +1,138 @@
+module Examples.streamreasoning where
+
+open import Data.Bool hiding (_≟_ ; _∧_ ; not)
+open import Data.Nat hiding (_≟_)
+open import Data.List
+open import Data.Sum
+open import Data.Product
+open import Data.Maybe hiding (_>>=_)
+open import Data.Empty
+open import Data.Unit hiding (_≟_)
+open import Function.Base
+
+open import Generics
+
+open import Relation.Nullary
+open import Relation.Nullary.Decidable as Decidable
+open import Relation.Binary.PropositionalEquality
+
+open import CLP.ftUtilsDerivation
+open import CLP.types
+open import CLP.unifyDisunify
+open import CLP.solverScheduler
+open import CLP.clp
+open import Empty.domain
+open import Bool.domain
+open import FD.domain
+open import Sum.domain
+
+open import ASP.types
+open import ASP.asp
+
+open import Examples.myDomainGroup
+
+data Functor : Set where
+  fnot    : Functor → Functor
+  validStream : FD → ⊎Logic BoolLogic BoolLogic → Functor
+  stream : FD → ⊎Logic BoolLogic BoolLogic → Functor
+  cancelled : FD → ⊎Logic BoolLogic BoolLogic → Functor
+  higherPrio : FD → FD → Functor
+  incompt : ⊎Logic BoolLogic BoolLogic → ⊎Logic BoolLogic BoolLogic → Functor
+  ffalse  : Functor
+
+functorD : HasDesc Functor
+functorD = deriveDesc Functor
+
+instance  ftUtilsFunctor : FTUtils Functor
+          ftUtilsFunctor = deriveFTUtils functorD
+
+foldFunctor = deriveFold functorD
+
+validate : Where → Functor → Set
+validate _ (fnot _) = ⊤
+validate _ ffalse = ⊤
+validate _ _ = ⊤
+
+instance  aspUtils : ASPUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          aspUtils .not = fnot
+          aspUtils .isNot (fnot _) = true
+          aspUtils .isNot _ = false
+          aspUtils .isFalse ffalse = true
+          aspUtils .isFalse _ = false
+          aspUtils .toggle (fnot x) = x
+          aspUtils .toggle x = fnot x
+          aspUtils .fillWithVars (fnot x) n = (fnot ∘ fillWithVars x) n
+          aspUtils .fillWithVars (validStream x y) n = validStream (varFD n) ((var⊎ ∘ suc) n)
+          aspUtils .fillWithVars (stream x y) n = stream (varFD n) ((var⊎ ∘ suc) n)
+          aspUtils .fillWithVars (cancelled x y) n = cancelled (varFD n) ((var⊎ ∘ suc) n)
+          aspUtils .fillWithVars (higherPrio x y) n = higherPrio (varFD n) ((varFD ∘ suc) n)
+          aspUtils .fillWithVars (incompt x y) n = incompt (var⊎ n) ((var⊎ ∘ suc) n)
+          aspUtils .fillWithVars ffalse n = ffalse
+
+instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          atomUtils .zipMatch (fnot x) (fnot y) = zipMatch atomUtils x y
+          atomUtils .zipMatch (validStream a b) (validStream x y) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
+          atomUtils .zipMatch (stream a b) (stream x y) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
+          atomUtils .zipMatch (cancelled a b) (cancelled x y) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
+          atomUtils .zipMatch (higherPrio a b) (higherPrio x y) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ [])
+          atomUtils .zipMatch (incompt a b) (incompt x y) = 
+            just ((_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (a =ℒ x) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
+          atomUtils .zipMatch ffalse ffalse = just []
+          atomUtils .zipMatch _ _ = nothing
+          atomUtils .increment n = 
+            foldFunctor 
+              fnot 
+              (λ a b → validStream (incrementFD n a) (increment⊎ n b))
+              (λ a b → stream (incrementFD n a) (increment⊎ n b))
+              (λ a b → cancelled (incrementFD n a) (increment⊎ n b))
+              (λ a b → higherPrio (incrementFD n a) (incrementFD n b))
+              (λ a b → incompt (increment⊎ n a) (increment⊎ n b))
+              ffalse
+
+module program where
+  open CLP.types
+
+  streamReasoning :
+    Clause Functor validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  streamReasoning = do
+    P ← new
+    Data ← new
+
+    validStream P Data :-
+        stream P Data
+      ∧  not (cancelled P Data) •
+    
+    P1 ← new
+    Data1 ← new
+
+    cancelled P Data :-
+        higherPrio P1 P
+      ∧  stream P1 Data1
+      ∧  incompt Data Data1 •
+    
+    PHi ← new
+    PLo ← new
+
+    higherPrio PHi PLo :-
+      (◇ (FD𝒞 :-: (PHi ＃> PLo))) ↼•
+    
+    X ← new
+
+    incompt (p X) (q X) •
+    incompt (q X) (p X) •
+
+    stream zero (p X) •
+    stream (suc zero) (q true) •
+    stream (suc (suc zero)) (q false) •
+    stream (suc (suc (suc zero))) (p true) •
+
+  question :
+    Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  question = 
+    validStream (varFD 0) (var⊎ 1) •
+
+  execute = aspExecute streamReasoning question

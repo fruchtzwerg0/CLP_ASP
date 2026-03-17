@@ -11,8 +11,8 @@ open import Relation.Nullary.Decidable as Decidable
 open import Relation.Binary.PropositionalEquality
 
 open import Generics
-open import Term.ftUtilsDerivation
-open import Term.types
+open import CLP.ftUtilsDerivation
+open import CLP.types
 
 data ⊎Logic (A : Set) (B : Set) : Set where
   p : A → ⊎Logic A B

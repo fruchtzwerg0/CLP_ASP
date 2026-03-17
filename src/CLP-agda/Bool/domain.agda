@@ -7,8 +7,8 @@ open import Data.List
 open import Function.Base
 
 open import Generics
-open import Term.ftUtilsDerivation
-open import Term.types
+open import CLP.ftUtilsDerivation
+open import CLP.types
 
 data BoolLogic : Set where
   true : BoolLogic

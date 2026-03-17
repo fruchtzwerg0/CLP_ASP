@@ -2,9 +2,9 @@
 
 module ASP.dual where
 
-open import Term.types
-open import Term.ftUtilsDerivation
-open import Term.utilities
+open import CLP.types
+open import CLP.ftUtilsDerivation
+open import CLP.utilities
 open import ASP.types
 open import Views.find
 open import Views.findall

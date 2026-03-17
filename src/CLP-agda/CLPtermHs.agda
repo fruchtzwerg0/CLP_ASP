@@ -1,6 +1,6 @@
 module CLPtermHs where
 
-open import Term.types
+open import CLP.types
 open import Term.solver
 open import Common.types
 open import Common.solver
