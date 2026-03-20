@@ -165,6 +165,8 @@ makeTopLevelBodyForNMR ⦃ ft ⦄ ⦃ at ⦄ (n , x) | false =
   else (buildForAll (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) forAll n
     ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom ⦃ ft ⦄ ⦃ at ⦄ ∘ ClauseI.head) x) [] ∘ ClauseI.head ∘ toChk) (n , x)
 
+-- computes the NMR rules 
+
 computeNMR : 
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
@@ -178,6 +180,8 @@ computeNMR :
 computeNMR x with (Data.List.map normalize ∘ findOLON) x
 ... | y = (nmrCheck :-- Data.List.map atom ((Data.List.map makeTopLevelBodyForNMR ∘ zipWith _,_ ((upTo ∘ suc ∘ length) y)) y)) ∷ 
   (concat ∘ Data.List.map makeNMRRule ∘ zipWith _,_ ((upTo ∘ suc ∘ length) y)) y
+
+-- adds the nmr call to the end of the goal list.
 
 addNMR : 
   {Atom : Set}

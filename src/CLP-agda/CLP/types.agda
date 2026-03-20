@@ -29,6 +29,9 @@ data ℒ (A : Set) : Set where
   _=ℒ_ : A → A → ℒ A
   _≠ℒ_ : A → A → ℒ A
 
+infixr 80 _=ℒ_
+infixr 80 _≠ℒ_
+
 data Dual (A : Set) : Set where
   default : A → Dual A
   dual : A → Dual A
@@ -116,12 +119,12 @@ toLiteralList (endst c) = constraint c ∷ []
 toLiteralList (cons a _ xs) = atom a ∷ toLiteralList xs
 toLiteralList (constr c xs) = constraint c ∷ toLiteralList xs
 
-pattern □_ x = inj₁ x
-pattern ◇_ x = inj₂ x
-pattern _• x = end x _
-pattern _∧_ x y = cons x _ y
-pattern _↼• x = endst x
-pattern _↼_ x y = constr x y
+pattern _•ₐ x = end x _
+pattern _∧ₐ_ x y = cons x _ y
+pattern _↣_• code x = endst (inj₁ (code :-: x))
+pattern _↪_• code x = endst (inj₂ (code :-: x))
+pattern _↣_∧_ code x y = constr (inj₁ (code :-: x)) y
+pattern _↪_∧_ code x y = constr (inj₂ (code :-: x)) y
 
 record ClauseI
   (Atom : Set) 
@@ -163,12 +166,13 @@ toIntern _ = []
 pattern _• x = fact x _
 pattern _:-_ x y = rule x _ y
 
-infix 50 □_
-infix 50 ◇_
 infix 60 _•
-infix 60 _↼•
-infixr 50 _∧_
-infixr 50 _↼_
+infix 60 _•ₐ
+infix 60 _↪_•
+infix 60 _↣_•
+infixr 50 _∧ₐ_
+infixr 50 _↪_∧_
+infixr 50 _↣_∧_
 
 infix 30 _:-_
 

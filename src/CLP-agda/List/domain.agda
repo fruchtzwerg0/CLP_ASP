@@ -4,6 +4,7 @@ open import Data.Bool hiding (_≟_)
 open import Data.Nat hiding (_≟_)
 open import Data.Maybe
 open import Data.List
+open import Data.Product
 open import Function.Base
 
 open import Relation.Nullary
@@ -25,6 +26,9 @@ listD = deriveDesc ListLogic
 ℕD : HasDesc ℕ
 ℕD = deriveDesc ℕ
 
+instance  decℕ : DecEq ℕ
+          decℕ = deriveDecEq ℕD
+
 instance  makeVarList : ∀ {A} → MakeVar (ListLogic A)
           makeVarList .fresh = varList
           makeVarList .new = varList 0
@@ -32,10 +36,13 @@ instance  makeVarList : ∀ {A} → MakeVar (ListLogic A)
 instance  unifyDisunifyℕ : FTUtils ℕ
           unifyDisunifyℕ = deriveFTUtils ℕD
 
-instance  unifyDisunifyList : ∀ {A} → ⦃ FTUtils A ⦄ → FTUtils (ListLogic A)
-          unifyDisunifyList = deriveFTUtils listD
+instance  ftUtilsList : ∀ {A} → ⦃ FTUtils A ⦄ → FTUtils (ListLogic A)
+          ftUtilsList = deriveFTUtils listD
 
 foldList = deriveFold listD
+
+instance  decList : ∀ {A} → ⦃ DecEq A ⦄ → DecEq (ListLogic A)
+          decList = deriveDecEq listD
 
 applyList : 
   {𝒞 : Set}
@@ -52,19 +59,23 @@ applyList c₀ c₁ _ n subst (varList m) with c₀ ≟ c₁
 ... | no _ = varList m
 applyList c₀ c₁ app n subst [] = []
 applyList {C}{Code}{Constraint} c₀ c₁ app n subst (x ∷ xs) = app n subst x ∷ applyList {C}{Code}{Constraint} c₀ c₁ app n subst xs
-{-
+
 zipMatchList : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
-  → (c₀ : 𝒞)
-  → (c₁ : 𝒞)
-  → Code c₀ ≡ ListLogic (Code c₁)
-  → ListLogic (Code c₁)
-  → ListLogic (Code c₁)
-  → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))
-zipMatchList c₀ c₁ refl (a ∷ b) (x ∷ y) = just ((_:-:_ c₁ (a =ℒ x)) ∷ (_:-:_ c₀ (b =ℒ y)) ∷ [])
-zipMatchList _ _ = nothing
--}
+  → (c : 𝒞)
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ FTUtils (Code c) ⦄
+  → ⦃ FTUtils (Constraint c) ⦄
+  → ⦃ DecEq (Code c) ⦄
+  → ListLogic (Code c)
+  → ListLogic (Code c)
+  → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) × List (ℒ (ListLogic (Code c))))
+zipMatchList c (a ∷ b) (x ∷ y) = just ((_:-:_ c (a =ℒ x)) ∷ [] , (b =ℒ y) ∷ [])
+zipMatchList _ [] [] = just ([] , [])
+zipMatchList _ _ _ = nothing
+
 incrementList : ∀ {A} → ℕ → ListLogic A → ListLogic A
 incrementList x = foldList [] _∷_ (λ y → varList (x + y))

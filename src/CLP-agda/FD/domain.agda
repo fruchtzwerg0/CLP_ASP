@@ -5,14 +5,14 @@ open import Data.Nat
 open import Data.Maybe
 open import Data.List
 open import Function.Base
+open import Agda.Builtin.Int
 
 open import Generics
 open import CLP.ftUtilsDerivation
 open import CLP.types
 
 data FD : Set where
-  zero : FD
-  suc : FD → FD
+  ＃_ : Int → FD
   _＃+_ : FD → FD → FD
   _＃-_ : FD → FD → FD
   _＃*_ : FD → FD → FD
@@ -23,10 +23,20 @@ data ℒFD : Set where
   _≤FD_ : FD → FD → ℒFD
   _≥FD_ : FD → FD → ℒFD
 
+infix 100 ＃_
+infixr 90 _＃+_
+infixr 90 _＃-_
+infixr 90 _＃*_
+
 pattern _＃≤_ x y = (default (x ≤FD y))
 pattern _＃>_ x y = (dual (x ≤FD y))
 pattern _＃≥_ x y = (default (x ≥FD y))
 pattern _＃<_ x y = (dual (x ≥FD y))
+
+infixr 80 _＃≤_
+infixr 80 _＃>_
+infixr 80 _＃≥_
+infixr 80 _＃<_
 
 FDD : HasDesc FD
 FDD = deriveDesc FD
@@ -36,6 +46,9 @@ FDD = deriveDesc FD
 
 ℕD : HasDesc ℕ
 ℕD = deriveDesc ℕ
+
+IntD : HasDesc Int
+IntD = deriveDesc Int
 
 instance  decℕ : DecEq ℕ
           decℕ = deriveDecEq ℕD
@@ -47,6 +60,13 @@ instance  makeVarFD : MakeVar FD
 instance  unifyDisunifyℕ : FTUtils ℕ
           unifyDisunifyℕ = deriveFTUtils ℕD
 
+instance  ftUtilsInt : FTUtils Int
+          ftUtilsInt .functor _ = "Int"
+          ftUtilsInt .getNat _ = nothing
+          ftUtilsInt .varName _ = nothing
+          ftUtilsInt .occurs _ _ = false
+          ftUtilsInt .collectVars _ = []
+
 instance  ftUtilsFD : FTUtils FD
           ftUtilsFD = deriveFTUtils FDD
 
@@ -55,15 +75,17 @@ instance  ftUtilsℒFD : FTUtils ℒFD
 
 foldFD = deriveFold FDD
 
+instance  decInt : DecEq Int
+          decInt = deriveDecEq IntD
+
 instance  decFD : DecEq FD
           decFD = deriveDecEq FDD
 
 applyFD : ℕ → FD → FD → FD
-applyFD x subst = foldFD zero suc _＃+_ _＃-_ _＃*_ div (λ y → if x ≡ᵇ y then subst else (varFD y))
+applyFD x subst = foldFD ＃_ _＃+_ _＃-_ _＃*_ div (λ y → if x ≡ᵇ y then subst else (varFD y))
 
 zipMatchFD : FD → FD → (Maybe ∘ List ∘ ℒ) FD
-zipMatchFD zero zero = just []
-zipMatchFD (suc x) (suc y) = just (x =ℒ y ∷ [])
+zipMatchFD (＃ x) (＃ y) = just ((＃ x) =ℒ (＃ y) ∷ [])
 zipMatchFD (a ＃+ b) (x ＃+ y) = just (a =ℒ x ∷ b =ℒ y ∷ [])
 zipMatchFD (a ＃- b) (x ＃- y) = just (a =ℒ x ∷ b =ℒ y ∷ [])
 zipMatchFD (a ＃* b) (x ＃* y) = just (a =ℒ x ∷ b =ℒ y ∷ [])
@@ -71,7 +93,7 @@ zipMatchFD (div a b) (div x y) = just (a =ℒ x ∷ b =ℒ y ∷ [])
 zipMatchFD _ _ = nothing
 
 incrementFD : ℕ → FD → FD
-incrementFD x = foldFD zero suc _＃+_ _＃-_ _＃*_ div (λ y → varFD (x + y))
+incrementFD x = foldFD ＃_ _＃+_ _＃-_ _＃*_ div (λ y → varFD (x + y))
 
 foldℒFD = deriveFold ℒFDD
 

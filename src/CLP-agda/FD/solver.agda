@@ -1,6 +1,8 @@
 module FD.solver where
 
-
+open import Agda.Builtin.String
+open import Agda.Builtin.Nat
+open import Agda.Builtin.Int
 open import Data.Bool hiding (not ; _∧_)
 open import Data.Char
 open import Data.String hiding (head; _++_)
@@ -15,7 +17,7 @@ open import FD.domain
 open import CLP.types
 
 data Expr : Set where
-  Lit : ℕ    → Expr
+  Lit : Int    → Expr
   Var : String → Expr
   Add : Expr   → Expr → Expr
   Sub : Expr   → Expr → Expr
@@ -106,9 +108,8 @@ toTerm (x ＃+ y) = Add (toTerm x) (toTerm y)
 toTerm (x ＃- y) = Sub (toTerm x) (toTerm y)
 toTerm (x ＃* y) = Mul (toTerm x) (toTerm y)
 toTerm (div x y) = Div (toTerm x) (toTerm y)
-toTerm zero = Lit zero
-toTerm (suc x) = Lit (suc zero)
-toTerm (varFD x) = Lit zero
+toTerm (＃ x) = Lit x
+toTerm (varFD x) = Var (primShowNat x)
 
 toConstraint : ℒ FD ⊎ Dual ℒFD → Constraint
 toConstraint (inj₁ (x =ℒ y)) = Eq (toTerm x) (toTerm y)

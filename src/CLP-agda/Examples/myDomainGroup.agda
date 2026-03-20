@@ -29,6 +29,8 @@ open import Bool.domain
 open import FD.domain
 open import FD.solver
 open import Sum.domain
+open import Product.domain
+open import List.domain
 
 open import CLP.domainUniverseGeneration hiding (_>>=_ ; _>>_)
 
@@ -36,12 +38,14 @@ open import CLP.domainUniverseGeneration hiding (_>>=_ ; _>>_)
 
 -- The first step is deriving the universe code type. The name My𝒞 will be the name of the type, and Bool𝒞 FD𝒞 ⊎𝒞
 -- will be the constructors. The last parameter maps codes to actual types you want to use.
-unquoteDecl data My𝒞 constructor Bool𝒞 FD𝒞 ⊎𝒞 =
+unquoteDecl data My𝒞 constructor Bool𝒞 FD𝒞 ⊎𝒞 ×𝒞 list𝒞 =
   makeUniverse
     My𝒞
     ( (Bool𝒞 , quote BoolLogic) ∷
       (FD𝒞   , quote FD       ) ∷
-      (⊎𝒞    , quote ⊎Logic   ) ∷ [] )
+      (⊎𝒞    , quote ⊎Logic   ) ∷
+      (×𝒞    , quote ×Logic   ) ∷
+      (list𝒞 , quote ListLogic) ∷ [] )
 
 -- For the universe to be usable, we need to derive a decoder function. The parameters stay thet same, but we need to quote 
 -- the things we already have.
@@ -49,7 +53,9 @@ unquoteDecl ⟦_⟧ =
   makeDecoder ⟦_⟧ (quote My𝒞)
     ( (quote Bool𝒞 , quote BoolLogic) ∷
       (quote FD𝒞   , quote FD      ) ∷
-      (quote ⊎𝒞     , quote ⊎Logic ) ∷
+      (quote ⊎𝒞    , quote ⊎Logic ) ∷
+      (quote ×𝒞    , quote ×Logic   ) ∷
+      (quote list𝒞 , quote ListLogic   ) ∷
       [] )
 
 -- The mapper from code to constraint type we need to define manually.
@@ -59,26 +65,34 @@ unquoteDecl ⟦_⟧ =
 ⟦ Bool𝒞 ⟧ℒ    = ⊥
 ⟦ FD𝒞 ⟧ℒ    = ℒFD
 ⟦ ⊎𝒞 c₀ c₁ ⟧ℒ  = ⊥
+⟦ ×𝒞 c₀ c₁ ⟧ℒ  = ⊥
+⟦ list𝒞 c ⟧ℒ  = ⊥
 
 -- Helper function we need for the definition of zipMatch for ⊎𝒞
 unquoteDecl mapType =
   makeMapper mapType (quote My𝒞) (quote ⟦_⟧) (quote FTUtils)
     ( (quote Bool𝒞 , quote ftUtilsBool) ∷
       (quote FD𝒞   , quote ftUtilsFD  ) ∷
-      (quote ⊎𝒞    , quote ftUtils⊎   ) ∷ [] )
+      (quote ⊎𝒞    , quote ftUtils⊎   ) ∷
+      (quote ×𝒞    , quote ftUtils×   ) ∷
+      (quote list𝒞    , quote ftUtilsList   ) ∷ [] )
 
 -- Helper function we need for the definition of zipMatch for ⊎𝒞
 mapConstraint : (c : My𝒞) → FTUtils ⟦ c ⟧ℒ
 mapConstraint Bool𝒞 = ftUtils⊥
 mapConstraint FD𝒞        = ftUtilsℒFD
 mapConstraint (⊎𝒞 c₀ c₁) = ftUtils⊥
+mapConstraint (×𝒞 c₀ c₁) = ftUtils⊥
+mapConstraint (list𝒞 c) = ftUtils⊥
 
 -- Helper function we need for the definition of zipMatch for ⊎𝒞
 unquoteDecl mapDecEq =
   makeMapper mapDecEq (quote My𝒞) (quote ⟦_⟧) (quote DecEq)
     ( (quote Bool𝒞 , quote decBool) ∷
       (quote FD𝒞   , quote decFD  ) ∷
-      (quote ⊎𝒞    , quote dec⊎   ) ∷ [] )
+      (quote ⊎𝒞    , quote dec⊎   ) ∷
+      (quote ×𝒞    , quote dec×   ) ∷
+      (quote list𝒞    , quote decList   ) ∷ [] )
 
 indexD : HasDesc My𝒞
 indexD = deriveDesc My𝒞
@@ -93,12 +107,15 @@ instance  constraintUtils : ConstraintUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
           constraintUtils .zipMatch Bool𝒞 ()
           constraintUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchℒFD c
           constraintUtils .zipMatch (⊎𝒞 c₀ c₁) ()
+          constraintUtils .zipMatch (×𝒞 c₀ c₁) ()
           constraintUtils .increment Bool𝒞 _ ()
           constraintUtils .increment FD𝒞 = incrementℒFD
           constraintUtils .increment (⊎𝒞 c₀ c₁) _ ()
+          constraintUtils .increment (×𝒞 c₀ c₁) _ ()
           constraintUtils .apply Bool𝒞 Bool𝒞 _ _ ()
           constraintUtils .apply FD𝒞 FD𝒞 = applyℒFD
           constraintUtils .apply _ (⊎𝒞 c₀ c₁) _ _ ()
+          constraintUtils .apply _ (×𝒞 c₀ c₁) _ _ ()
           constraintUtils .apply _ _ _ _ expr = expr
 
 -- We need to provide value utilities for all the domain types in our universe.
@@ -107,12 +124,20 @@ instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
           valueUtils .zipMatch Bool𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ Bool𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchBool c
           valueUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchFD c
           valueUtils .zipMatch (⊎𝒞 c₀ c₁) = zipMatch⊎ c₀ c₁ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄
+          valueUtils .zipMatch (×𝒞 c₀ c₁) = zipMatch× c₀ c₁ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄
+          valueUtils .zipMatch (list𝒞 c) x = 
+            Data.Maybe.map (λ { (x , y) → x ++ Data.List.map (λ l → _:-:_ (list𝒞 c) l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) y }) 
+            ∘ zipMatchList c ⦃ _ ⦄ ⦃ _ ⦄ ⦃ mapType c ⦄ ⦃ mapConstraint c ⦄ ⦃ mapDecEq c ⦄ x
           valueUtils .increment Bool𝒞 = incrementBool
           valueUtils .increment FD𝒞 = incrementFD
           valueUtils .increment (⊎𝒞 c₀ c₁) = increment⊎
+          valueUtils .increment (×𝒞 c₀ c₁) = increment×
+          valueUtils .increment (list𝒞 c) = incrementList
           valueUtils .apply Bool𝒞 Bool𝒞 = applyBool
           valueUtils .apply FD𝒞 FD𝒞 = applyFD
           valueUtils .apply (⊎𝒞 c₀ c₁) (⊎𝒞 c₂ c₃) = apply⊎ c₀ c₁ c₂ c₃ (apply valueUtils (⊎𝒞 c₀ c₁) c₂) (apply valueUtils (⊎𝒞 c₀ c₁) c₃)
+          valueUtils .apply (×𝒞 c₀ c₁) (×𝒞 c₂ c₃) = apply× c₀ c₁ c₂ c₃ (apply valueUtils (×𝒞 c₀ c₁) c₂) (apply valueUtils (×𝒞 c₀ c₁) c₃)
+          valueUtils .apply (list𝒞 c₀) (list𝒞 c₁) = applyList c₀ c₁ (apply valueUtils (list𝒞 c₀) c₁)
           valueUtils .apply i₀ Bool𝒞 n subst expr = expr
           valueUtils .apply i₀ FD𝒞 n subst expr = expr
           valueUtils .apply i₀ (⊎𝒞 c₀ c₁) n subst = 
@@ -120,6 +145,13 @@ instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
               (λ x → p (apply valueUtils i₀ c₀ n subst x)) 
               (λ x → q (apply valueUtils i₀ c₁ n subst x))
               var⊎
+          valueUtils .apply i₀ (×𝒞 c₀ c₁) n subst = 
+            fold× 
+              (λ x y → apply valueUtils i₀ c₀ n subst x ∶ apply valueUtils i₀ c₁ n subst y) 
+              var×
+          valueUtils .apply i₀ (list𝒞 c) n subst [] = []
+          valueUtils .apply i₀ (list𝒞 c) n subst (varList x) = varList x
+          valueUtils .apply i₀ (list𝒞 c) n subst (x ∷ xs) = (apply valueUtils i₀ c n subst x) ∷ (apply valueUtils i₀ (list𝒞 c) n subst xs)
 
 -- Here, we can use pattern matching to map domains to solvers. 
 -- unifyDisunify is part of the abstract CLP scheme, and domain-agnostic.
@@ -131,6 +163,8 @@ instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
           solver .solve FD𝒞 = 
             Data.List.map (Data.List.map (λ {(inj₁ x) → inj₁ (generalize FD𝒞 x) ; (inj₂ x) → inj₂ (generalizeCustom FD𝒞 x)})) ∘ fdSolve
           solver .solve (⊎𝒞 c₀ c₁) = unifyDisunify (⊎𝒞 c₀ c₁) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
+          solver .solve (×𝒞 c₀ c₁) = unifyDisunify (×𝒞 c₀ c₁) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
+          solver .solve (list𝒞 c) = unifyDisunify (list𝒞 c) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
 
 -- It is not recommended to modify the scheduler, defaultSchedule is perfectly safe and usable for any domain group.
 instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ

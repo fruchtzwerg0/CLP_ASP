@@ -1,5 +1,6 @@
 module Examples.streamreasoning where
 
+open import Agda.Builtin.Int
 open import Data.Bool hiding (_≟_ ; _∧_ ; not)
 open import Data.Nat hiding (_≟_)
 open import Data.List
@@ -28,6 +29,7 @@ open import Sum.domain
 
 open import ASP.types
 open import ASP.asp
+open import ASP.dual
 
 open import Examples.myDomainGroup
 
@@ -113,36 +115,38 @@ module program where
     Data ← new
 
     validStream P Data :-
-        stream P Data
-      ∧  not (cancelled P Data) •
+      stream P Data ∧ₐ
+      not (cancelled P Data) •ₐ
     
     P1 ← new
     Data1 ← new
 
     cancelled P Data :-
-        higherPrio P1 P
-      ∧  stream P1 Data1
-      ∧  incompt Data Data1 •
+      higherPrio P1 P ∧ₐ
+      stream P1 Data1 ∧ₐ
+      incompt Data Data1 •ₐ
     
     PHi ← new
     PLo ← new
 
     higherPrio PHi PLo :-
-      (◇ (FD𝒞 :-: (PHi ＃> PLo))) ↼•
-    
+      FD𝒞 ↪ PHi ＃> PLo •
+
     X ← new
 
     incompt (p X) (q X) •
     incompt (q X) (p X) •
 
-    stream zero (p X) •
-    stream (suc zero) (q true) •
-    stream (suc (suc zero)) (q false) •
-    stream (suc (suc (suc zero))) (p true) •
+    stream (＃ (pos 0)) (p X) •
+    stream (＃ (pos 1)) (q true) •
+    stream (＃ (pos 2)) (q false) •
+    stream (＃ (pos 3)) (p true) •
 
   question :
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question = 
-    validStream (varFD 0) (var⊎ 1) •
+    validStream (varFD 0) (var⊎ 1) •ₐ
 
-  execute = aspExecute streamReasoning question
+  execute = (head ∘ aspExecute streamReasoning) question
+
+  getDuals = computeDuals (toIntern streamReasoning)
