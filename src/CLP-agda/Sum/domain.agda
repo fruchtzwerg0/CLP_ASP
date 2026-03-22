@@ -46,7 +46,6 @@ instance  dec⊎ : ∀ {A B} → ⦃ DecEq A ⦄ → ⦃ DecEq B ⦄ → DecEq (
 apply⊎ : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
-  → {Constraint : (𝒞 → Set)}
   → ⦃ DecEq 𝒞 ⦄
   → (c₀ : 𝒞)
   → (c₁ : 𝒞)
@@ -59,8 +58,8 @@ apply⊎ :
 apply⊎ c₀ c₁ c₂ c₃ _ _ n subst (var⊎ m) with c₀ ≟ c₂ | c₁ ≟ c₃
 ... | yes refl | yes refl = if m ≡ᵇ n then subst else (var⊎ m)
 ... | _ | _ = var⊎ m
-apply⊎ {C}{Code}{Constraint} c₀ c₁ c₂ c₃ app₀ app₁ n subst (p expr) = p (app₀ n subst expr)
-apply⊎ {C}{Code}{Constraint} c₀ c₁ c₂ c₃ app₀ app₁ n subst (q expr) = q (app₁ n subst expr)
+apply⊎ c₀ c₁ c₂ c₃ app₀ app₁ n subst (p expr) = p (app₀ n subst expr)
+apply⊎ c₀ c₁ c₂ c₃ app₀ app₁ n subst (q expr) = q (app₁ n subst expr)
 
 zipMatch⊎ : 
   {𝒞 : Set}
@@ -68,8 +67,6 @@ zipMatch⊎ :
   → {Constraint : (𝒞 → Set)}
   → (c₀ : 𝒞)
   → (c₁ : 𝒞)
-  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ FTUtils (Code c₀) ⦄
   → ⦃ FTUtils (Constraint c₀) ⦄
   → ⦃ DecEq (Code c₀) ⦄

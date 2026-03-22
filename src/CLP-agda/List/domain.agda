@@ -47,7 +47,6 @@ instance  decList : ∀ {A} → ⦃ DecEq A ⦄ → DecEq (ListLogic A)
 applyList : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
-  → {Constraint : (𝒞 → Set)}
   → ⦃ DecEq 𝒞 ⦄
   → (c₀ : 𝒞) 
   → (c₁ : 𝒞) 
@@ -58,15 +57,13 @@ applyList c₀ c₁ _ n subst (varList m) with c₀ ≟ c₁
 ... | yes refl = if m ≡ᵇ n then subst else (varList m)
 ... | no _ = varList m
 applyList c₀ c₁ app n subst [] = []
-applyList {C}{Code}{Constraint} c₀ c₁ app n subst (x ∷ xs) = app n subst x ∷ applyList {C}{Code}{Constraint} c₀ c₁ app n subst xs
+applyList c₀ c₁ app n subst (x ∷ xs) = app n subst x ∷ applyList c₀ c₁ app n subst xs
 
 zipMatchList : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
   → (c : 𝒞)
-  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ FTUtils (Code c) ⦄
   → ⦃ FTUtils (Constraint c) ⦄
   → ⦃ DecEq (Code c) ⦄

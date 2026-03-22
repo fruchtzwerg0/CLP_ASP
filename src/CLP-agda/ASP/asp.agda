@@ -54,8 +54,13 @@ instance aspFT : ∀ {Atom 𝒞 Code Constraint} → ⦃ FTUtils Atom ⦄ → FT
          aspFT .collectVars nmrCheck = []
          aspFT {_}{C}{Code}{Constraint} .collectVars (chk _ _ x) = collectVarsᵥ C Code Constraint x
 
-incrementExi : ∀ {𝒞 Code Constraint} → ℕ → Σᵢ 𝒞 Code Code Constraint → Σᵢ 𝒞 Code Code Constraint
-incrementExi n (_:-:_ c x ⦃ _ ⦄ ⦃ val ⦄) = (_:-:_ c (increment val c n x))
+incrementExi : 
+  ∀ {𝒞 Code Constraint}
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄ 
+  → ℕ 
+  → Σᵢ 𝒞 Code Code Constraint 
+  → Σᵢ 𝒞 Code Code Constraint
+incrementExi ⦃ val ⦄ n (_:-:_ c x) = (_:-:_ c (increment val c n x))
 
 zipMatchExi : 
   ∀ {𝒞 Code Constraint}
@@ -72,7 +77,11 @@ zipMatchExi ((_:-:_ c₀ x ⦃ _ ⦄ ⦃ val ⦄) ∷ xs) ((_:-:_ c₁ y ⦃ _ �
 
 -- AtomUtils needs to be implemented for ASPAtom
 
-instance aspAtom : ∀ {Atom 𝒞 Code Constraint} → ⦃ DecEq 𝒞 ⦄ → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄ → AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
+instance aspAtom : ∀ {Atom 𝒞 Code Constraint} 
+                   → ⦃ DecEq 𝒞 ⦄
+                   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄ 
+                   → ⦃ ValueUtils 𝒞 Code Constraint ⦄ 
+                   → AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
          aspAtom {_}{C}{Code}{Constraint} ⦃ _ ⦄ ⦃ at ⦄ .zipMatch (wrap at₀ n₀ x₀) (wrap at₁ n₁ x₁) = 
           if n₀ ≡ᵇ n₁
           then zipMatch at at₀ at₁ Data.Maybe.>>= (λ y → zipMatchExi x₀ x₁ Data.Maybe.>>= (λ z → just (y ++ z)))
@@ -139,7 +148,7 @@ aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃
   clpExecute {Atom}{ASPAtom Atom C Code Constraint}
     (λ x → Data.List.map (λ y → ((λ x → wrap x 0 []) ∘ ClauseI.head) y :-- 
                           (Data.List.map (toNewLiteral (λ x → wrap x 0 [])) ∘ ClauseI.body) y) x 
-    ++ computeNMR ⦃ sched ⦄ ⦃ asp ⦄ x 
+    ++ computeNMR ⦃ cns ⦄ ⦃ val ⦄ ⦃ sched ⦄ ⦃ asp ⦄ x 
     ++ computeDuals x) 
     addNMR 
     (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ asp ⦄ ⦃ x ⦄ ⦃ y ⦄)

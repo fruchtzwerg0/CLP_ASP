@@ -43,6 +43,8 @@ checkCHS :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
@@ -64,6 +66,8 @@ checkLoops :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄

@@ -1,5 +1,3 @@
-{-# OPTIONS --allow-unsolved-metas #-}
-
 module ASP.cforall where
 
 open import CLP.types hiding (_>>=_)
@@ -29,7 +27,7 @@ open import CLP.clp
 open import ASP.dual
 
 addToConstraintStore : 
-  ∀ {Atom 𝒞 Code Constraint}
+  ∀ {𝒞 Code Constraint}
   → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
   → (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
@@ -39,6 +37,8 @@ cForall₀ :
   ∀ {Atom 𝒞 Code Constraint}
   → {Custom : Set}
   → ⦃ DecEq 𝒞 ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
@@ -62,6 +62,8 @@ cForall :
   ∀ {Atom 𝒞 Code Constraint}
   → {Custom : Set}
   → ⦃ DecEq 𝒞 ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄

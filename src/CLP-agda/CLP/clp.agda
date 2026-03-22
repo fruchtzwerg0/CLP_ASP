@@ -37,6 +37,8 @@ bindAndRename :
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → Atom 
   → ℕ 
   → ClauseI Atom 𝒞 Code Constraint 

@@ -1,5 +1,3 @@
-{-# OPTIONS --allow-unsolved-metas #-}
-
 module ASP.dual where
 
 open import CLP.types
@@ -47,16 +45,32 @@ maybeToList : {A : Set} → Maybe (List A) → List A
 maybeToList nothing  = []
 maybeToList (just x) = x
 
+{-# TERMINATING #-}
+nubBy : {A : Set} → (A → A → Bool) → List A → List A
+nubBy _ []       = []
+nubBy pred (x ∷ xs) = x ∷ nubBy pred (filterᵇ (λ y → Data.Bool.not (pred x y)) xs)
+
 equal : 
   ∀ {𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄ 
   → Σᵢ 𝒞 Code Code Constraint → Σᵢ 𝒞 Code Code Constraint → Bool
-equal (_:-:_ c₀ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ inst ⦄) (_:-:_ c₁ y) with c₀ ≟ c₁
+equal (_:-:_ c₀ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ inst ⦄) (_:-:_ c₁ y) with c₀ ≟ c₁
 ... | yes refl = decToBool (_≟_ ⦃ inst ⦄ x y)
 ... | no _ = false
 
 without : {A : Set} → (A → A → Bool) → List A → List A → List A
 without pred xs ys = filterᵇ (λ x → Data.Bool.not (any (pred x) ys)) xs
+
+fillWithVars : 
+  ∀ {𝒞 Code Constraint}
+  → List (Σᵢ 𝒞 Code Code Constraint)
+  → ℕ
+  → List (Σᵢ 𝒞 Code Code Constraint)
+fillWithVars ((_:-:_ c x ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ va ⦄) ∷ xs) n = 
+  if (is-just ∘ varName) x
+  then (_:-:_ c x ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ va ⦄) ∷ fillWithVars xs n
+  else (_:-:_ c (fresh n) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ va ⦄) ∷ fillWithVars xs (suc n) 
+fillWithVars [] _ = []
 
 toNewLiteral : 
   {Atom : Set}
@@ -86,17 +100,33 @@ makeTopLevelBody :
 makeTopLevelBody f at zero = []
 makeTopLevelBody f at (suc x) = f at (suc x) [] ∷ makeTopLevelBody f at x
 
-zipMatchRecursive : 
-  {Atom : Set}
-  → {𝒞 : Set}
+getFirst : 
+  {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
+  → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint
+  → Σᵢ 𝒞 Code Code Constraint
+getFirst (_:-:_ c₁ (x =ℒ y) ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) = _:-:_ c₁ x ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄
+getFirst (_:-:_ c₁ (x ≠ℒ y) ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) = _:-:_ c₁ x ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄
+
+{-# TERMINATING #-}
+zipMatchRecursive : 
+  {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ DecEq 𝒞 ⦄ 
   → List (Σᵢ 𝒞 Code Code Constraint)
   → List (Σᵢ 𝒞 Code Code Constraint)
-zipMatchRecursive ((_:-:_ c₁ x ⦃ _ ⦄ ⦃ val ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ xs) with 
-  Data.List.map (λ (_:-:_ c x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → 
-    (λ { (c₁ :-: (x =ℒ y)) → x ; (c₁ :-: (x ≠ℒ y)) → x }) (zipMatch val c x x)) ((_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ xs)
-zipMatchRecursive x | y = Data.List.map (λ {(a , nothing) → a ; (a , just b) → zipMatchRecursive b}) (zipWith _,_ x y)
+zipMatchRecursive ⦃ val ⦄ ((_:-:_ c₁ x ⦃ d ⦄ ⦃ f ⦄ ⦃ e ⦄) ∷ xs) with 
+  Data.List.map (λ (_:-:_ c x ⦃ d ⦄ ⦃ f ⦄ ⦃ e ⦄) → 
+    zipMatch val c x x Data.Maybe.>>= just ∘ Data.List.map getFirst) ((_:-:_ c₁ x ⦃ d ⦄ ⦃ f ⦄ ⦃ e ⦄) ∷ xs)
+zipMatchRecursive x | y = (concat ∘ Data.List.map (λ {
+  (a , nothing) → a ∷ [] ; 
+  (a , just (b ∷ [])) → 
+    if (equal a b) then (a ∷ []) else zipMatchRecursive (b ∷ []) ;
+  (a , just b) → 
+    zipMatchRecursive b})) (zipWith _,_ x y)
 zipMatchRecursive [] = []
 
 collectLeaves : 
@@ -104,23 +134,23 @@ collectLeaves :
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ DecEq 𝒞 ⦄ 
   → Literal Atom 𝒞 Code Constraint
   → List (Σᵢ 𝒞 Code Code Constraint)
-collectLeaves (constraint (inj₁ (_:-:_ c (x =ℒ y) ⦃ _ ⦄ ⦃ val ⦄ ⦃ _ ⦄ ⦃ _ ⦄))) = 
-  zipMatchRecursive ((_:-:_ c x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ c y ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-collectLeaves (constraint (inj₁ (_:-:_ c (x ≠ℒ y) ⦃ _ ⦄ ⦃ val ⦄ ⦃ _ ⦄ ⦃ _ ⦄))) = 
-  zipMatchRecursive ((_:-:_ c x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ c y ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-collectLeaves (constraint (inj₂ (_:-:_ c (default l) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ cn ⦄))) with zipMatch cn c l l 
-... | just x = (zipMatchRecursive ∘ Data.List.map (λ { (_:-:_ c₁ (x =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) 
-                                                     ; (_:-:_ c₁ (x ≠ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) })) x
+collectLeaves (constraint (inj₁ (_:-:_ c (x =ℒ y) ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄))) = 
+  zipMatchRecursive ((_:-:_ c x ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) ∷ (_:-:_ c y ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) ∷ [])
+collectLeaves (constraint (inj₁ (_:-:_ c (x ≠ℒ y) ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄))) = 
+  zipMatchRecursive ((_:-:_ c x ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) ∷ (_:-:_ c y ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) ∷ [])
+collectLeaves ⦃ cn ⦄ (constraint (inj₂ (_:-:_ c (default l)))) with zipMatch cn c l l 
+... | just x = (zipMatchRecursive ∘ Data.List.map getFirst) x
 ... | nothing = []
-collectLeaves (constraint (inj₂ (_:-:_ c (dual l) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ cn ⦄))) with zipMatch cn c l l 
-... | just x = (zipMatchRecursive ∘ Data.List.map (λ { (_:-:_ c₁ (x =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) 
-                                                     ; (_:-:_ c₁ (x ≠ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) })) x
+collectLeaves ⦃ cn ⦄ (constraint (inj₂ (_:-:_ c (dual l)))) with zipMatch cn c l l 
+... | just x = (zipMatchRecursive ∘ Data.List.map getFirst) x
 ... | nothing = []
 collectLeaves (atom ⦃ _ ⦄ ⦃ cn ⦄ at) with zipMatch cn at at
-... | just x = (zipMatchRecursive ∘ Data.List.map (λ { (_:-:_ c₁ (x =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) 
-                                                     ; (_:-:_ c₁ (x ≠ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) → (_:-:_ c₁ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) })) x
+... | just x = (zipMatchRecursive ∘ Data.List.map getFirst) x
 ... | nothing = []
 
 existentialVars : 
@@ -128,12 +158,14 @@ existentialVars :
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ DecEq 𝒞 ⦄ 
   → ClauseI Atom 𝒞 Code Constraint 
   → List (Σᵢ 𝒞 Code Code Constraint)
 existentialVars (_:--_ hea bod ⦃ ft ⦄ ⦃ at ⦄) = 
-  without equal
-    ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ concat ∘ Data.List.map collectLeaves) bod)
+  (nubBy equal ∘ without equal
+    ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ concat ∘ Data.List.map collectLeaves) bod))
     ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom ⦃ ft ⦄ ⦃ at ⦄) hea)
 
 negateConstraint : 
@@ -179,6 +211,8 @@ applyDeMorgan :
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils Atom₀ 𝒞 Code Constraint ⦄
   → ⦃ FTUtils Atom₀ ⦄
@@ -189,8 +223,8 @@ applyDeMorgan :
   → ClauseI Atom 𝒞 Code Constraint
   → List (ClauseI Atom₀ 𝒞 Code Constraint)
 applyDeMorgan f toNewAtom n (hea :-- bod) = let forAllVars = existentialVars (hea :-- bod)
-  in unfoldr (λ { (suc x) → just ((f hea n forAllVars :-- ((Data.List.map ∘ toNewLiteral) toNewAtom ∘ buildNegatedBody ( ∣ length bod - x ∣ )) bod) , x) ;
-                  zero → nothing }) (length bod)
+  in (unfoldr (λ { (suc x) → just ((f hea n forAllVars :-- ((Data.List.map ∘ toNewLiteral) toNewAtom ∘ buildNegatedBody ( ∣ length bod - suc x ∣ )) bod) , x) ;
+                  zero → nothing }) ∘ length) bod
 
 buildForAll : 
   {Atom : Set}
@@ -206,7 +240,7 @@ buildForAll :
   → List (Σᵢ 𝒞 Code Code Constraint)
   → Atom
   → Atom₀
-buildForAll f forA n (v ∷ vars) acc name = forA v (buildForAll f forA n vars (v ∷ acc) name)
+buildForAll f forA n (v ∷ vars) acc name = forA v (buildForAll f forA n vars (acc ++ v ∷ []) name)
 buildForAll f forA n [] acc name = f name n acc
 
 normalize : 
@@ -214,14 +248,17 @@ normalize :
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
+  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ DecEq 𝒞 ⦄
   → ClauseI Atom 𝒞 Code Constraint
-  → ClauseI Atom 𝒞 Code Constraint
-normalize {_}{C}{Code}{Constraint} (_:--_ hea bod ⦃ ft ⦄ ⦃ at ⦄) = 
-  let newHead = (fillWithVars hea ∘ foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (hea :-- bod) in
-    newHead :-- ((Data.List.map (constraint ∘ inj₁) ∘ filterᵇ (λ { (c₁ :-: (x =ℒ y)) → (Data.Bool.not ∘ equal (c₁ :-: x)) (c₁ :-: y) ;
-                                                          (c₁ :-: (x ≠ℒ y)) → (Data.Bool.not ∘ equal (c₁ :-: x)) (c₁ :-: y) }) ∘ maybeToList ∘ zipMatch at hea) newHead ++ bod)
+  → ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
+normalize {_}{C}{Code}{Constraint} ⦃ asat ⦄ (_:--_ hea bod ⦃ ft ⦄ ⦃ at ⦄) = 
+  let newHead = (wrap hea 0 ∘ fillWithVars (maybeToList (zipMatch at hea hea Data.Maybe.>>= just ∘ Data.List.map getFirst)) 
+                ∘ suc ∘ foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (hea :-- bod) in
+    newHead :-- ((Data.List.map (constraint ∘ inj₁) ∘ filterᵇ 
+      (λ { (_:-:_ c₁ (x =ℒ y) ⦃ ft ⦄) → (Data.Bool.not ∘ is-just ∘ varName ⦃ ft ⦄) x ;
+           (_:-:_ c₁ (x ≠ℒ y) ⦃ ft ⦄) → (Data.Bool.not ∘ is-just ∘ varName ⦃ ft ⦄) x }) ∘ maybeToList ∘ zipMatch asat hea) newHead ++ bod)
 
 computeDual : 
   {Atom : Set}
@@ -229,6 +266,8 @@ computeDual :
   → {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils Atom₀ 𝒞 Code Constraint ⦄
   → ⦃ FTUtils Atom₀ ⦄
@@ -239,7 +278,6 @@ computeDual :
   → List (ClauseI Atom 𝒞 Code Constraint)
   → List (ClauseI Atom₀ 𝒞 Code Constraint)
 computeDual f toNewAtom forA ((hea :-- bod) ∷ xs) = 
-  ((toNewAtom ∘ ASP.types.not) hea :-- (Data.List.map atom (reverse (makeTopLevelBody f hea ((suc ∘ length) xs))))) ∷
   (concat ∘ Data.List.map
     (λ {(n , (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄)) → 
       if (_≡ᵇ_ 0 ∘ length ∘ existentialVars) (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄)
@@ -247,7 +285,8 @@ computeDual f toNewAtom forA ((hea :-- bod) ∷ xs) =
            else (f hea (suc n) [] :--
               ((atom ∘ buildForAll f forA (suc n) (existentialVars (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄)) []) hea ∷ [])
               ∷ applyDeMorgan f toNewAtom (suc n) (_:--_ hea bod ⦃ i0 ⦄ ⦃ i1 ⦄))} ))
-           (zipWith _,_ ((upTo ∘ suc ∘ length) xs) ((hea :-- bod) ∷ xs))
+           (zipWith _,_ ((upTo ∘ suc ∘ length) xs) ((hea :-- bod) ∷ xs)) ++ 
+  ((toNewAtom ∘ ASP.types.not) hea :-- (Data.List.map atom (reverse (makeTopLevelBody f hea ((suc ∘ length) xs))))) ∷ []
 computeDual _ _ _ [] = []
 
 insertGroup :
@@ -281,6 +320,8 @@ computeDuals :
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
   → ⦃ DecEq 𝒞 ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)

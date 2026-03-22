@@ -31,13 +31,10 @@ record FTUtils {l} (A : Set l) : Set l where
     collectVars : A → List ℕ
 open FTUtils ⦃...⦄ public
 
--- varName
--- functor
--- zipMatch
--- applyᵥ
--- occursᵥ
--- incrementᵥ
--- collectVarsᵥ
+
+maybeToListf : {A : Set} → Maybe A → List A
+maybeToListf nothing  = []
+maybeToListf (just x) = x ∷ []
 
 beginsWithList : List Char → List Char → Bool
 beginsWithList _ [] = true
@@ -197,7 +194,7 @@ module _
                 → List ℕ
 
     collectVars-wf : (x : A′ (p , i)) → Acc x → List ℕ
-    collectVars-wf x (acc a) = collectVarsData-wf (split x) a -- (varName-wf x (acc a) >>= (λ { nothing → []; just x → x ∷ [] })) ++ collectVarsData-wf (split x) a
+    collectVars-wf x (acc a) = maybeToListf (varName-wf x (acc a)) ++ collectVarsData-wf (split x) a
 
     collectVarsData-wf (k , x) a = collectVarsCon (lookupCon D k) (lookupHelper helpers k) x a
       where

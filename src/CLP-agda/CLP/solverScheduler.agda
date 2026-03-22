@@ -42,16 +42,18 @@ equal (_:-:_ c₀ _) (_:-:_ c₁ _) with c₀ ≟ c₁
 defaultSchedule₀ : 
   ∀ {𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → List (Σᵢ 𝒞 (λ _ → ⊤) Code Constraint)
   → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
-defaultSchedule₀ ⦃ dec ⦄ ((_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) ∷ xs) unifications = 
-  let res = (solve c ⦃ dec ⦄ ⦃ instCode ⦄ ⦃ instCns ⦄ ∘ catMaybes ∘ Data.List.map (getPermission c)) unifications in
+defaultSchedule₀ ⦃ dec ⦄ ⦃ val ⦄ ⦃ cns ⦄ ((_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) ∷ xs) unifications = 
+  let res = (solve c ⦃ dec ⦄ ⦃ instCode ⦄ ⦃ val ⦄ ⦃ instCns ⦄ ⦃ cns ⦄ ∘ catMaybes ∘ Data.List.map (getPermission c)) unifications in
     (concat ∘ Data.List.map (λ y → defaultSchedule₀
       ((nubBy equal ∘ _++_ xs ∘ 
-      Data.List.map (λ {(inj₁ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄ ;
-                        (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄}) ∘ 
+      Data.List.map (λ {(inj₁ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCode1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCode1 ⦄ ;
+                        (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCode1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCode1 ⦄}) ∘ 
       catMaybes ∘ 
       (Data.List.map ∘ getElse) c) 
       y) y)) res
@@ -61,6 +63,8 @@ defaultSchedule₀ [] unifications = unifications ∷ []
 defaultSchedule : 
   ∀ {𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)

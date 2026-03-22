@@ -75,15 +75,6 @@ instance  aspUtils : ASPUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           aspUtils .isFalse _ = false
           aspUtils .toggle (fnot x) = x
           aspUtils .toggle x = fnot x
-          aspUtils .fillWithVars (fnot x) n = (fnot ∘ fillWithVars x) n
-          aspUtils .fillWithVars (nqueens x y) n = nqueens (varFD n) ((varList ∘ suc) n)
-          aspUtils .fillWithVars (nqueens₀ x y z a) n = nqueens₀ (varFD n) ((varFD ∘ suc) n) ((varList ∘ suc ∘ suc) n) ((varList ∘ suc ∘ suc ∘ suc) n)
-          aspUtils .fillWithVars (pickqueen x y z) n = pickqueen (varFD n) ((varFD ∘ suc) n) ((varFD ∘ suc ∘ suc) n)
-          aspUtils .fillWithVars (qf x y) n = qf (varFD n) ((varFD ∘ suc) n)
-          aspUtils .fillWithVars (negqf x y) n = negqf (varFD n) ((varFD ∘ suc) n)
-          aspUtils .fillWithVars (attack x y z) n = attack (varFD n) ((varFD ∘ suc) n) ((varList ∘ suc ∘ suc) n)
-          aspUtils .fillWithVars (abs x y) n = abs (varFD n) ((varFD ∘ suc) n)
-          aspUtils .fillWithVars ffalse n = ffalse
 
 -- These are general functions that we need in the generic CLP scheme.
 instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ

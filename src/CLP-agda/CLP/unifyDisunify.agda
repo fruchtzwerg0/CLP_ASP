@@ -95,7 +95,7 @@ RuleType = ∀ {𝒞 Code Constraint}
 aRule : RuleType
 aRule c [] _ _ = nothing
 aRule c ⦃ instftval ⦄ ⦃ instval ⦄ ⦃ instftcns ⦄ ⦃ instcns ⦄ ⦃ decval ⦄ (left =ℒ right ∷ xs) ys vars with varName left | varName right
-... | nothing | just n = just ((Data.List.map (λ l → _:-:_ c l ⦃ instftval ⦄ ⦃ instval ⦄ ⦃ instftcns ⦄ ⦃ instcns ⦄ ⦃ decval ⦄) (right =ℒ left ∷ xs ++ ys) , vars) ∷ [])
+... | nothing | just n = just ((Data.List.map (λ l → _:-:_ c l ⦃ instftval ⦄ ⦃ instftcns ⦄ ⦃ decval ⦄) (right =ℒ left ∷ xs ++ ys) , vars) ∷ [])
 ... | _ | _ = aRule c xs (left =ℒ right ∷ ys) vars
 aRule c ⦃ inst ⦄ (left ≠ℒ right ∷ xs) ys vars with varName left | varName right
 ... | nothing | just n = just ((Data.List.map (λ l → _:-:_ c l ⦃ inst ⦄) (right ≠ℒ left ∷ xs ++ ys) , vars) ∷ [])
@@ -115,7 +115,7 @@ ncDisCompoundNonDetRule : RuleType
 ncDisCompoundNonDetRule c [] _ _ = nothing
 ncDisCompoundNonDetRule c ⦃ inst ⦄ ⦃ val ⦄ ⦃ inst2 ⦄ ⦃ val2 ⦄ ⦃ decval ⦄ (left ≠ℒ right ∷ xs) ys vars with varName left | varName right | zipMatch val c left right
 ... | nothing | nothing | nothing = just ((Data.List.map (λ l → _:-:_ c l ⦃ inst ⦄) (right ≠ℒ left ∷ xs ++ ys) , vars) ∷ [])
-... | nothing | nothing | just y = just (Data.List.map (λ { x → (x ∷ Data.List.map (λ l → _:-:_ c l ⦃ inst ⦄ ⦃ val ⦄ ⦃ inst2 ⦄ ⦃ val2 ⦄ ⦃ decval ⦄) (xs ++ ys)) , vars }) y)
+... | nothing | nothing | just y = just (Data.List.map (λ { x → (x ∷ Data.List.map (λ l → _:-:_ c l ⦃ inst ⦄ ⦃ inst2 ⦄ ⦃ decval ⦄) (xs ++ ys)) , vars }) y)
 ... | _ | _ | _ = ncDisCompoundNonDetRule c xs (left ≠ℒ right ∷ ys) vars
 ncDisCompoundNonDetRule c (left =ℒ right ∷ xs) ys vars = ncDisCompoundNonDetRule c xs (left ≠ℒ right ∷ ys) vars
 
@@ -172,13 +172,13 @@ dRuleWithNCVar {C}{Code}{Constraint} c ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ inst
   if occursᵥ {listOf genericConstraint} {⊤} C Code Constraint n (Data.List.map (generalize c ⦃ instCode ⦄ ⦃ instCns ⦄) (xs ++ ys)) ∧ not (n ≡ᵇ m)
   then (if occurs n right 
         then just [] 
-        else just (((Data.List.map (λ l → _:-:_ c l ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄ ⦃ decval ⦄) ∘ Data.List.map (applyConstraint ⦃ instCns ⦄ c n right)) (xs ++ ys) , vars) ∷ []))
+        else just (((Data.List.map (λ l → _:-:_ c l ⦃ instCode ⦄ ⦃ instCode1 ⦄ ⦃ decval ⦄) ∘ Data.List.map (applyConstraint ⦃ instCns ⦄ c n right)) (xs ++ ys) , vars) ∷ []))
   else (dRuleWithNCVar c xs (left =ℒ right ∷ ys) vars)
 ... | just n | nothing = 
   if occursᵥ {listOf genericConstraint} {⊤} C Code Constraint n (Data.List.map (generalize c ⦃ instCode ⦄ ⦃ instCns ⦄) (xs ++ ys))
   then (if occurs n right 
         then just [] 
-        else just (((Data.List.map (λ l → _:-:_ c l ⦃ instCode ⦄ ⦃ instCns ⦄ ⦃ instCode1 ⦄ ⦃ instCns1 ⦄ ⦃ decval ⦄) ∘ Data.List.map (applyConstraint ⦃ instCns ⦄ c n right)) (xs ++ ys) , vars) ∷ []))
+        else just (((Data.List.map (λ l → _:-:_ c l ⦃ instCode ⦄ ⦃ instCode1 ⦄ ⦃ decval ⦄) ∘ Data.List.map (applyConstraint ⦃ instCns ⦄ c n right)) (xs ++ ys) , vars) ∷ []))
   else (dRuleWithNCVar c xs (left =ℒ right ∷ ys) vars)
 ... | _ | _ = dRuleWithNCVar c xs (left =ℒ right ∷ ys) vars
 dRuleWithNCVar c (left ≠ℒ right ∷ xs) ys vars = dRuleWithNCVar c xs (left ≠ℒ right ∷ ys) vars

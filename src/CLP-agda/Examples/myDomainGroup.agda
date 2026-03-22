@@ -1,5 +1,3 @@
-{-# OPTIONS --allow-unsolved-metas #-}
-
 module Examples.myDomainGroup where
 
 open import Data.Bool hiding (_≟_ ; _∧_ ; not)
@@ -105,7 +103,8 @@ instance  decMy𝒞 : DecEq My𝒞
 -- These are provided in the same file of the domains, so we just need to glue it together.
 instance  constraintUtils : ConstraintUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
           constraintUtils .zipMatch Bool𝒞 ()
-          constraintUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchℒFD c
+          constraintUtils .zipMatch FD𝒞 c = 
+            Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄)) ∘ zipMatchℒFD c
           constraintUtils .zipMatch (⊎𝒞 c₀ c₁) ()
           constraintUtils .zipMatch (×𝒞 c₀ c₁) ()
           constraintUtils .increment Bool𝒞 _ ()
@@ -121,13 +120,13 @@ instance  constraintUtils : ConstraintUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
 -- We need to provide value utilities for all the domain types in our universe.
 -- These are provided in the same file of the domains, so we just need to glue it together.
 instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          valueUtils .zipMatch Bool𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ Bool𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchBool c
-          valueUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)) ∘ zipMatchFD c
-          valueUtils .zipMatch (⊎𝒞 c₀ c₁) = zipMatch⊎ c₀ c₁ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄
-          valueUtils .zipMatch (×𝒞 c₀ c₁) = zipMatch× c₀ c₁ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄
+          valueUtils .zipMatch Bool𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ Bool𝒞 l ⦃ ftUtilsBool ⦄ ⦃ ftUtils⊥ ⦄ ⦃ decBool ⦄)) ∘ zipMatchBool c
+          valueUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄)) ∘ zipMatchFD c
+          valueUtils .zipMatch (⊎𝒞 c₀ c₁) = zipMatch⊎ c₀ c₁ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄
+          valueUtils .zipMatch (×𝒞 c₀ c₁) = zipMatch× c₀ c₁ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄
           valueUtils .zipMatch (list𝒞 c) x = 
-            Data.Maybe.map (λ { (x , y) → x ++ Data.List.map (λ l → _:-:_ (list𝒞 c) l ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) y }) 
-            ∘ zipMatchList c ⦃ _ ⦄ ⦃ _ ⦄ ⦃ mapType c ⦄ ⦃ mapConstraint c ⦄ ⦃ mapDecEq c ⦄ x
+            Data.Maybe.map (λ { (x , y) → x ++ Data.List.map (λ l → _:-:_ (list𝒞 c) l ⦃ ftUtilsList ⦃ mapType c ⦄ ⦄ ⦃ ftUtils⊥ ⦄ ⦃ decList ⦃ mapDecEq c ⦄ ⦄) y }) 
+            ∘ zipMatchList c ⦃ mapType c ⦄ ⦃ mapConstraint c ⦄ ⦃ mapDecEq c ⦄ x
           valueUtils .increment Bool𝒞 = incrementBool
           valueUtils .increment FD𝒞 = incrementFD
           valueUtils .increment (⊎𝒞 c₀ c₁) = increment⊎
@@ -159,13 +158,15 @@ instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
 -- and if we don't have a custom constraint domain.
 -- FD has its own solver. Here, it needs to be converted back to the general dependent type.
 instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          solver .solve Bool𝒞 = unifyDisunify Bool𝒞 ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
+          solver .solve Bool𝒞 = unifyDisunify Bool𝒞 ⦃ decMy𝒞 ⦄ ⦃ ftUtilsBool ⦄ ⦃ valueUtils ⦄ ⦃ ftUtils⊥ ⦄ ⦃ constraintUtils ⦄
           solver .solve FD𝒞 = 
-            Data.List.map (Data.List.map (λ {(inj₁ x) → inj₁ (generalize FD𝒞 x) ; (inj₂ x) → inj₂ (generalizeCustom FD𝒞 x)})) ∘ fdSolve
-          solver .solve (⊎𝒞 c₀ c₁) = unifyDisunify (⊎𝒞 c₀ c₁) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
-          solver .solve (×𝒞 c₀ c₁) = unifyDisunify (×𝒞 c₀ c₁) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
-          solver .solve (list𝒞 c) = unifyDisunify (list𝒞 c) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄
+            Data.List.map (Data.List.map 
+              (λ {(inj₁ x) → inj₁ (generalize FD𝒞 ⦃ ftUtilsFD ⦄ ⦃ valueUtils ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ constraintUtils ⦄ ⦃ decFD ⦄ x) ; 
+                  (inj₂ x) → inj₂ (generalizeCustom FD𝒞 ⦃ ftUtilsFD ⦄ ⦃ valueUtils ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ constraintUtils ⦄ ⦃ decFD ⦄ x)})) ∘ fdSolve
+          solver .solve (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec⊎ ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄
+          solver .solve (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec× ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄
+          solver .solve (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decList ⦃ mapDecEq c ⦄ ⦄
 
 -- It is not recommended to modify the scheduler, defaultSchedule is perfectly safe and usable for any domain group.
 instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          scheduler .schedule = defaultSchedule ⦃ _ ⦄ ⦃ _ ⦄
+          scheduler .schedule = defaultSchedule ⦃ decMy𝒞 ⦄ ⦃ valueUtils ⦄ ⦃ constraintUtils ⦄ ⦃ solver ⦄

@@ -33,6 +33,8 @@ open import ASP.dual
 
 open import Examples.myDomainGroup
 
+open import CLP.utilities
+
 -- "types" of atoms to be used by the logic program
 -- comparable to type declarations in mercury (also hindley-milner)
 data Functor : Set where
@@ -71,27 +73,20 @@ instance  aspUtils : ASPUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           aspUtils .isFalse _ = false
           aspUtils .toggle (fnot x) = x
           aspUtils .toggle x = fnot x
-          aspUtils .fillWithVars (fnot x) n = (fnot ∘ fillWithVars x) n
-          aspUtils .fillWithVars (validStream x y) n = validStream (varFD n) ((var⊎ ∘ suc) n)
-          aspUtils .fillWithVars (stream x y) n = stream (varFD n) ((var⊎ ∘ suc) n)
-          aspUtils .fillWithVars (cancelled x y) n = cancelled (varFD n) ((var⊎ ∘ suc) n)
-          aspUtils .fillWithVars (higherPrio x y) n = higherPrio (varFD n) ((varFD ∘ suc) n)
-          aspUtils .fillWithVars (incompt x y) n = incompt (var⊎ n) ((var⊎ ∘ suc) n)
-          aspUtils .fillWithVars ffalse n = ffalse
 
 -- These are general functions that we need in the generic CLP scheme.
 instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           atomUtils .zipMatch (fnot x) (fnot y) = zipMatch atomUtils x y
           atomUtils .zipMatch (validStream a b) (validStream x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ ftUtils⊎ ⦄ ⦃ ftUtils⊥ ⦄ ⦃ dec⊎ ⦄) ∷ [])
           atomUtils .zipMatch (stream a b) (stream x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ ftUtils⊎ ⦄ ⦃ ftUtils⊥ ⦄ ⦃ dec⊎ ⦄) ∷ [])
           atomUtils .zipMatch (cancelled a b) (cancelled x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ ftUtils⊎ ⦄ ⦃ ftUtils⊥ ⦄ ⦃ dec⊎ ⦄) ∷ [])
           atomUtils .zipMatch (higherPrio a b) (higherPrio x y) = 
             just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ [])
           atomUtils .zipMatch (incompt a b) (incompt x y) = 
-            just ((_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (a =ℒ x) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
+            just ((_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (a =ℒ x) ⦃ ftUtils⊎ ⦄ ⦃ ftUtils⊥ ⦄ ⦃ dec⊎ ⦄) ∷ (_:-:_ (⊎𝒞 Bool𝒞 Bool𝒞) (b =ℒ y) ⦃ ftUtils⊎ ⦄ ⦃ ftUtils⊥ ⦄ ⦃ dec⊎ ⦄) ∷ [])
           atomUtils .zipMatch ffalse ffalse = just []
           atomUtils .zipMatch _ _ = nothing
           atomUtils .increment n = 
@@ -147,6 +142,25 @@ module program where
   question = 
     validStream (varFD 0) (var⊎ 1) •ₐ
 
+  realStream = (toIntern  ∘ proj₂ ∘ applyVars streamReasoning) 0
   execute = (head ∘ aspExecute streamReasoning) question
 
-  getDuals = computeDuals (toIntern streamReasoning)
+  getDuals = computeDuals realStream
+  normalizee = ((groupByKey ClauseI.head (λ x → is-just ∘ zipMatch atomUtils x)) ∘ Data.List.map normalize) realStream
+  normalizeee = computeDual (λ at n l → wrap (ASP.types.not at) n l) (λ x → wrap x 0 []) forAll ((incompt (var⊎ 7) (var⊎ 8) :--
+      (constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (p (varBool 6) =ℒ var⊎ 7))) ∷
+      constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (q (varBool 6) =ℒ var⊎ 8))) ∷
+      []))
+    ∷
+    (incompt (var⊎ 7) (var⊎ 8) :--
+      (constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (q (varBool 6) =ℒ var⊎ 7))) ∷
+      constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (p (varBool 6) =ℒ var⊎ 8))) ∷
+      []))
+    ∷ [])
+  exif = existentialVars (validStream (varFD 0) (var⊎ 1) :--
+    (atom (stream (varFD 0) (var⊎ 1)) ∷
+    atom (fnot (cancelled (varFD 0) (var⊎ 1))) ∷ []))
+  zmatch = zipMatchRecursive ((FD𝒞 :-: (＃ pos 0)) ∷ [])
+  varTest = varName (varFD 0)
+  --hormalize = ASP.dual.equal (FD𝒞 :-: (varFD 0)) (FD𝒞 :-: (＃ (pos 3)))
+  collectVaff = collectVarsᵥ My𝒞 ⟦_⟧ ⟦_⟧ℒ realStream

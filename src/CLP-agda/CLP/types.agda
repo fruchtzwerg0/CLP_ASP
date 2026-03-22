@@ -51,7 +51,6 @@ data Where : Set where
 record Σᵢ (A : Set) (B : A → Set) (Code : A → Set) (Cns : A → Set) : Set
 
 record ConstraintUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
-  inductive
   field
     zipMatch : (c : 𝒞) → Constraint c → Constraint c → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
     increment : (c : 𝒞) → ℕ → Constraint c → Constraint c
@@ -59,7 +58,6 @@ record ConstraintUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 
 open ConstraintUtils ⦃...⦄ public
 
 record ValueUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
-  inductive
   field
     zipMatch : (c : 𝒞) → Code c → Code c → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
     increment : (c : 𝒞) → ℕ → Code c → Code c
@@ -67,16 +65,14 @@ record ValueUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → S
 open ValueUtils ⦃...⦄ public
 
 record Σᵢ A B Code Cns where
-  inductive
   constructor _:-:_
   field
     code   : A
     value : B code
     ⦃ instftval ⦄ : FTUtils (Code code)
-    ⦃ instval ⦄ : ValueUtils A Code Cns
     ⦃ instftcns ⦄ : FTUtils (Cns code)
-    ⦃ instcns ⦄ : ConstraintUtils A Code Cns
     ⦃ decval ⦄ : DecEq (Code code)
+    ⦃ makeVar ⦄ : MakeVar (Code code)
 open Σᵢ public
 
 record AtomUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
@@ -222,6 +218,8 @@ record Scheduler (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Se
   field
     schedule :
      ⦃ DecEq 𝒞 ⦄
+     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+     → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
      → ⦃ Solver 𝒞 Code Constraint ⦄
      → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
      → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
