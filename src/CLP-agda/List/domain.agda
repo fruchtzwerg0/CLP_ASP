@@ -67,6 +67,7 @@ zipMatchList :
   → ⦃ FTUtils (Code c) ⦄
   → ⦃ FTUtils (Constraint c) ⦄
   → ⦃ DecEq (Code c) ⦄
+  → ⦃ MakeVar (Code c) ⦄
   → ListLogic (Code c)
   → ListLogic (Code c)
   → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) × List (ℒ (ListLogic (Code c))))

@@ -1,5 +1,3 @@
-{-# OPTIONS --allow-unsolved-metas #-}
-
 module ASP.nmr where
 
 open import CLP.types hiding (_>>=_)
@@ -119,55 +117,54 @@ appendNotSelf x with (ASP.types.isFalse ∘ ClauseI.head) x
 ... | false with (last ∘ ClauseI.body) x
 ... | nothing = x
 ... | (just (constraint _)) = x
-... | (just (atom ⦃ _ ⦄ ⦃ at ⦄ y)) with equalAtom ⦃ at ⦄ (ClauseI.head x) y
+... | (just (atom ⦃ ft ⦄ ⦃ at ⦄ y)) with equalAtom ⦃ at ⦄ (ClauseI.head x) y
 ... | true = x
-... | false = _:--_ (ClauseI.head x) (ClauseI.body x ++ (atom ⦃ _ ⦄ ⦃ at ⦄ y) ∷ []) ⦃ _ ⦄ ⦃ at ⦄
+... | false = _:--_ (ClauseI.head x) (ClauseI.body x ++ (atom ⦃ ft ⦄ ⦃ at ⦄ y) ∷ []) ⦃ ft ⦄ ⦃ at ⦄
 
 toChk : 
   ∀ {Atom 𝒞 Code Constraint}
-  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
-  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
-  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
-  → (ℕ × ClauseI Atom 𝒞 Code Constraint)
+  → (ℕ × ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
   → ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
-toChk ⦃ at ⦄ (n , x) = chk n 0
-  ((Data.List.map getFirst 
-    ∘ maybeToList ∘ (zipMatch at ∘ ClauseI.head) x ∘ ClauseI.head) x) :-- 
-    ((Data.List.map ∘ toNewLiteral) (λ x → wrap x 0 []) ∘ ClauseI.body) x
+toChk (n , x) =
+  _:--_ (chk n 0 ((Data.List.map getFirst 
+    ∘ maybeToList ∘ (zipMatch (ClauseI.instAt x) ∘ ClauseI.head) x ∘ ClauseI.head) x))
+  (ClauseI.body x) ⦃ ClauseI.inst x ⦄ ⦃ ClauseI.instAt x ⦄
 
 makeNMRRule : 
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
-  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
-  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ DecEq 𝒞 ⦄
-  → (ℕ × ClauseI Atom 𝒞 Code Constraint)
+  → (ℕ × ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
   → List (ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
 makeNMRRule (n , x) with (ASP.types.isFalse ∘ ClauseI.head) x
-makeNMRRule (n , x) | true  = (computeDual (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) id forAll ∘ [_] ∘ toChk) (n , x)
-makeNMRRule (n , x) | false = (computeDual (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) id forAll ∘ [_] ∘ toChk) (n , appendNotSelf x)
+makeNMRRule ⦃ cns ⦄ ⦃ val ⦄ ⦃ asp ⦄ (n , x) | true  = 
+  (computeDual ⦃ cns ⦄ ⦃ val ⦄ ⦃ asp ⦄ ⦃ ClauseI.instAt x ⦄ ⦃ ClauseI.inst x ⦄ 
+  (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) id forAll ∘ [_] ∘ toChk) (n , x)
+makeNMRRule ⦃ cns ⦄ ⦃ val ⦄ ⦃ asp ⦄ (n , x) | false = 
+  (computeDual ⦃ cns ⦄ ⦃ val ⦄ ⦃ asp ⦄ ⦃ ClauseI.instAt x ⦄ ⦃ ClauseI.inst x ⦄ 
+  (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) id forAll ∘ [_] ∘ toChk) (n , appendNotSelf x)
 
 makeTopLevelBodyForNMR : 
   ∀ {Atom 𝒞 Code Constraint}
-  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
-  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ DecEq 𝒞 ⦄
-  → ℕ × ClauseI Atom 𝒞 Code Constraint
+  → ℕ × ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
   → ASPAtom Atom 𝒞 Code Constraint
 makeTopLevelBodyForNMR (n , x) with (ASP.types.isFalse ∘ ClauseI.head) x
-makeTopLevelBodyForNMR ⦃ ft ⦄ ⦃ at ⦄ (n , x) | true = (ClauseI.head ∘ toChk) (n , x)
-makeTopLevelBodyForNMR ⦃ ft ⦄ ⦃ at ⦄ (n , x) | false = 
-  if (_≡ᵇ_ 0 ∘ length ∘ filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom ⦃ ft ⦄ ⦃ at ⦄ ∘ ClauseI.head) x
+makeTopLevelBodyForNMR ⦃ cns ⦄ ⦃ val ⦄ ⦃ asp ⦄ ⦃ aspa ⦄ ⦃ dec ⦄ (n , x) | true = (ClauseI.head ∘ toChk) (n , x)
+makeTopLevelBodyForNMR ⦃ cns ⦄ ⦃ val ⦄ ⦃ asp ⦄ ⦃ aspa ⦄ ⦃ dec ⦄ (n , x) | false = 
+  if (_≡ᵇ_ 0 ∘ length ∘ filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) 
+  ∘ collectLeaves ⦃ cns ⦄ ⦃ val ⦄ ⦃ dec ⦄ ∘ atom ⦃ ClauseI.inst x ⦄ ⦃ ClauseI.instAt x ⦄) (ClauseI.head x)
   then (ClauseI.head ∘ toChk) (n , x)
   else (buildForAll (λ { (chk x y l₀) n l₁ → chk x n (l₀ ++ l₁) ; x _ _ → x }) forAll n
-    ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom ⦃ ft ⦄ ⦃ at ⦄ ∘ ClauseI.head) x) [] ∘ ClauseI.head ∘ toChk) (n , x)
+    ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) 
+    ∘ collectLeaves ⦃ cns ⦄ ⦃ val ⦄ ⦃ dec ⦄ ∘ atom ⦃ ClauseI.inst x ⦄ ⦃ ClauseI.instAt x ⦄) (ClauseI.head x)) 
+    [] ∘ ClauseI.head ∘ toChk) (n , x)
 
 -- computes the NMR rules 
 

@@ -92,6 +92,14 @@ unquoteDecl mapDecEq =
       (quote ×𝒞    , quote dec×   ) ∷
       (quote list𝒞    , quote decList   ) ∷ [] )
 
+-- Helper function we need for the definition of zipMatch for ⊎𝒞
+mapMakeVar : (c : My𝒞) → MakeVar ⟦ c ⟧
+mapMakeVar Bool𝒞 = makeVarBool
+mapMakeVar FD𝒞        = makeVarFD
+mapMakeVar (⊎𝒞 c₀ c₁) = makeVar⊎
+mapMakeVar (×𝒞 c₀ c₁) = makeVar×
+mapMakeVar (list𝒞 c) = makeVarList
+
 indexD : HasDesc My𝒞
 indexD = deriveDesc My𝒞
 
@@ -122,11 +130,11 @@ instance  constraintUtils : ConstraintUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
 instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
           valueUtils .zipMatch Bool𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ Bool𝒞 l ⦃ ftUtilsBool ⦄ ⦃ ftUtils⊥ ⦄ ⦃ decBool ⦄)) ∘ zipMatchBool c
           valueUtils .zipMatch FD𝒞 c = Data.Maybe.map (Data.List.map (λ l → _:-:_ FD𝒞 l ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄)) ∘ zipMatchFD c
-          valueUtils .zipMatch (⊎𝒞 c₀ c₁) = zipMatch⊎ c₀ c₁ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄
-          valueUtils .zipMatch (×𝒞 c₀ c₁) = zipMatch× c₀ c₁ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄
+          valueUtils .zipMatch (⊎𝒞 c₀ c₁) = zipMatch⊎ c₀ c₁ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapMakeVar c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄ ⦃ mapMakeVar c₁ ⦄
+          valueUtils .zipMatch (×𝒞 c₀ c₁) = zipMatch× c₀ c₁ ⦃ mapType c₀ ⦄ ⦃ mapConstraint c₀ ⦄ ⦃ mapDecEq c₀ ⦄ ⦃ mapMakeVar c₀ ⦄ ⦃ mapType c₁ ⦄ ⦃ mapConstraint c₁ ⦄ ⦃ mapDecEq c₁ ⦄ ⦃ mapMakeVar c₁ ⦄
           valueUtils .zipMatch (list𝒞 c) x = 
             Data.Maybe.map (λ { (x , y) → x ++ Data.List.map (λ l → _:-:_ (list𝒞 c) l ⦃ ftUtilsList ⦃ mapType c ⦄ ⦄ ⦃ ftUtils⊥ ⦄ ⦃ decList ⦃ mapDecEq c ⦄ ⦄) y }) 
-            ∘ zipMatchList c ⦃ mapType c ⦄ ⦃ mapConstraint c ⦄ ⦃ mapDecEq c ⦄ x
+            ∘ zipMatchList c ⦃ mapType c ⦄ ⦃ mapConstraint c ⦄ ⦃ mapDecEq c ⦄ ⦃ mapMakeVar c ⦄ x
           valueUtils .increment Bool𝒞 = incrementBool
           valueUtils .increment FD𝒞 = incrementFD
           valueUtils .increment (⊎𝒞 c₀ c₁) = increment⊎

@@ -146,7 +146,7 @@ module program where
   execute = (head ∘ aspExecute streamReasoning) question
 
   getDuals = computeDuals realStream
-  normalizee = ((groupByKey ClauseI.head (λ x → is-just ∘ zipMatch atomUtils x)) ∘ Data.List.map normalize) realStream
+  normalizee = ((groupByKey ClauseI.head (λ x → is-just ∘ zipMatch aspAtom x)) ∘ Data.List.map normalize) realStream
   normalizeee = computeDual (λ at n l → wrap (ASP.types.not at) n l) (λ x → wrap x 0 []) forAll ((incompt (var⊎ 7) (var⊎ 8) :--
       (constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (p (varBool 6) =ℒ var⊎ 7))) ∷
       constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (q (varBool 6) =ℒ var⊎ 8))) ∷

@@ -52,12 +52,14 @@ unifyDisunify₀ :
   → ⦃ FTUtils (Constraint c) ⦄ 
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ DecEq (Code c) ⦄
+  → ⦃ MakeVar (Code c) ⦄
   → List ((c : 𝒞)
     → ⦃ FTUtils (Code c) ⦄
     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
     → ⦃ FTUtils (Constraint c) ⦄ 
     → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
     → ⦃ DecEq (Code c) ⦄
+    → ⦃ MakeVar (Code c) ⦄
     → List ((ℒ ∘ Code) c)
     → List ((ℒ ∘ Code) c)
     → List (ℕ × (List (Code c)))
@@ -68,6 +70,7 @@ unifyDisunify₀ :
     → ⦃ FTUtils (Constraint c) ⦄ 
     → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
     → ⦃ DecEq (Code c) ⦄
+    → ⦃ MakeVar (Code c) ⦄
     → List ((ℒ ∘ Code) c)
     → List ((ℒ ∘ Code) c)
     → List (ℕ × (List (Code c)))
@@ -87,6 +90,7 @@ RuleType = ∀ {𝒞 Code Constraint}
   → ⦃ FTUtils (Constraint c) ⦄ 
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ DecEq (Code c) ⦄
+  → ⦃ MakeVar (Code c) ⦄
   → List ((ℒ ∘ Code) c)
   → List ((ℒ ∘ Code) c)
   → List (ℕ × (List (Code c)))
@@ -190,6 +194,7 @@ rules : ∀ {𝒞 Code Constraint}
     → ⦃ FTUtils (Constraint c) ⦄ 
     → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
     → ⦃ DecEq (Code c) ⦄
+    → ⦃ MakeVar (Code c) ⦄
     → List ((ℒ ∘ Code) c)
     → List ((ℒ ∘ Code) c)
     → List (ℕ × (List (Code c)))
@@ -220,6 +225,7 @@ unifyDisunify :
   → ⦃ FTUtils (Constraint c) ⦄ 
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ DecEq (Code c) ⦄
+  → ⦃ MakeVar (Code c) ⦄
   → List ((ℒ ∘ Code) c ⊎ (Dual ∘ (λ _ → ⊥)) c)
   → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 unifyDisunify witness unifications = 

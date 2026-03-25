@@ -70,9 +70,11 @@ zipMatch⊎ :
   → ⦃ FTUtils (Code c₀) ⦄
   → ⦃ FTUtils (Constraint c₀) ⦄
   → ⦃ DecEq (Code c₀) ⦄
+  → ⦃ MakeVar (Code c₀) ⦄
   → ⦃ FTUtils (Code c₁) ⦄
   → ⦃ FTUtils (Constraint c₁) ⦄
   → ⦃ DecEq (Code c₁) ⦄
+  → ⦃ MakeVar (Code c₁) ⦄
   → ⊎Logic (Code c₀) (Code c₁)
   → ⊎Logic (Code c₀) (Code c₁)
   → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))

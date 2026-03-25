@@ -109,6 +109,26 @@ getFirst :
 getFirst (_:-:_ c₁ (x =ℒ y) ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) = _:-:_ c₁ x ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄
 getFirst (_:-:_ c₁ (x ≠ℒ y) ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) = _:-:_ c₁ x ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄
 
+toArgList : 
+  {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → {Atom : Set}
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → Atom
+  → List (Σᵢ 𝒞 Code Code Constraint)
+toArgList ⦃ at ⦄ a = maybeToList (zipMatch at a a Data.Maybe.>>= just ∘ Data.List.map getFirst)
+
+toNewAtom : 
+  {Atom : Set}
+  {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → Atom
+  → ASPAtom Atom 𝒞 Code Constraint
+toNewAtom x = (wrap x 0 ∘ toArgList) x
+
 {-# TERMINATING #-}
 zipMatchRecursive : 
   {𝒞 : Set}
@@ -250,15 +270,18 @@ normalize :
   → {Constraint : (𝒞 → Set)}
   → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
   → ⦃ DecEq 𝒞 ⦄
   → ClauseI Atom 𝒞 Code Constraint
   → ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
 normalize {_}{C}{Code}{Constraint} ⦃ asat ⦄ (_:--_ hea bod ⦃ ft ⦄ ⦃ at ⦄) = 
-  let newHead = (wrap hea 0 ∘ fillWithVars (maybeToList (zipMatch at hea hea Data.Maybe.>>= just ∘ Data.List.map getFirst)) 
+  let newHead = (wrap hea 0 ∘ (fillWithVars ∘ toArgList ⦃ at ⦄) hea
                 ∘ suc ∘ foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (hea :-- bod) in
     newHead :-- ((Data.List.map (constraint ∘ inj₁) ∘ filterᵇ 
       (λ { (_:-:_ c₁ (x =ℒ y) ⦃ ft ⦄) → (Data.Bool.not ∘ is-just ∘ varName ⦃ ft ⦄) x ;
-           (_:-:_ c₁ (x ≠ℒ y) ⦃ ft ⦄) → (Data.Bool.not ∘ is-just ∘ varName ⦃ ft ⦄) x }) ∘ maybeToList ∘ zipMatch asat hea) newHead ++ bod)
+           (_:-:_ c₁ (x ≠ℒ y) ⦃ ft ⦄) → (Data.Bool.not ∘ is-just ∘ varName ⦃ ft ⦄) x }) 
+           ∘ maybeToList) (zipMatch asat (toNewAtom ⦃ at ⦄ hea) newHead)
+           ++ Data.List.map (toNewLiteral (toNewAtom ⦃ at ⦄)) bod)
 
 computeDual : 
   {Atom : Set}
@@ -321,11 +344,12 @@ computeDuals :
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
   → ⦃ DecEq 𝒞 ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)
   → List (ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
-computeDuals ⦃ _ ⦄ ⦃ at ⦄ =
-  concat ∘ (Data.List.map ∘ computeDual (λ at n l → wrap (ASP.types.not at) n l) (λ x → wrap x 0 [])) forAll
-  ∘ (groupByKey ClauseI.head (λ x → is-just ∘ zipMatch at x)) ∘ Data.List.map normalize
+computeDuals ⦃ _ ⦄ ⦃ at ⦄ ⦃ atas ⦄ =
+  concat ∘ (Data.List.map ∘ computeDual (λ { (wrap at n₀ l₀) n l → wrap (ASP.types.not at) n (l₀ ++ l) ; at n l → at }) id) forAll
+  ∘ (groupByKey ClauseI.head (λ x → is-just ∘ zipMatch atas x)) ∘ Data.List.map normalize

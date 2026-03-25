@@ -24,9 +24,9 @@ boolD = deriveDesc BoolLogic
 instance  decℕ : DecEq ℕ
           decℕ = deriveDecEq ℕD
 
-instance  makeVarBoolLogic : MakeVar BoolLogic
-          makeVarBoolLogic .fresh = varBool
-          makeVarBoolLogic .new = varBool 0
+instance  makeVarBool : MakeVar BoolLogic
+          makeVarBool .fresh = varBool
+          makeVarBool .new = varBool 0
 
 instance  unifyDisunifyℕ : FTUtils ℕ
           unifyDisunifyℕ = deriveFTUtils ℕD
