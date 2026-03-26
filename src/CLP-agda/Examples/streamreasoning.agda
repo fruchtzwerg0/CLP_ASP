@@ -30,6 +30,7 @@ open import Sum.domain
 open import ASP.types
 open import ASP.asp
 open import ASP.dual
+open import ASP.nmr
 
 open import Examples.myDomainGroup
 
@@ -164,3 +165,5 @@ module program where
   varTest = varName (varFD 0)
   --hormalize = ASP.dual.equal (FD𝒞 :-: (varFD 0)) (FD𝒞 :-: (＃ (pos 3)))
   collectVaff = collectVarsᵥ My𝒞 ⟦_⟧ ⟦_⟧ℒ realStream
+
+  getNmr = computeNMR realStream
