@@ -35,18 +35,27 @@ takeWhile1 : ∀ {a} {A : Set a} → (A → Bool) → List A → List A
 takeWhile1 p []       = []
 takeWhile1 p (x ∷ xs) with p x
 ... | true  = x ∷ takeWhile1 p xs
-... | false = []
+... | false = x ∷ []
+
+cleanNot :
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → Atom
+  → Atom
+cleanNot a = if isNot a then toggle a else a
 
 equalAtom :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → Atom
   → Atom
   → Bool
-equalAtom ⦃ at ⦄ a0 = is-just ∘ zipMatch at a0
+equalAtom ⦃ at ⦄ a0 = is-just ∘ zipMatch at (cleanNot a0) ∘ cleanNot
 
 toClause :
   ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)
   → Atom × ℕ
   → Maybe (ClauseI Atom 𝒞 Code Constraint)
@@ -54,6 +63,7 @@ toClause program (a , n) = (index n ∘ filterᵇ (equalAtom a ∘ ClauseI.head)
 
 getClauses :
   ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)
   → Atom
   → List (ClauseI Atom 𝒞 Code Constraint)
@@ -62,6 +72,7 @@ getClauses program a = filterᵇ (equalAtom a ∘ ClauseI.head) program
 getAdjacent :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)
   → Atom × ℕ
   → (Maybe ∘ List) (Atom × ℕ)
@@ -81,10 +92,10 @@ findOLON₀ :
   → (curr : Atom × ℕ)
   → List (Atom × ℕ) × List (Atom × ℕ)
 findOLON₀ ⦃ at ⦄ program stack visited curr 
-  with takeWhile1 ((λ x y → equalAtom ⦃ at ⦄ (proj₁ x) (proj₁ y)) curr) stack | 
+  with takeWhile1 ((λ x y → (Data.Bool.not ∘ equalAtom ⦃ at ⦄ (proj₁ x) ∘ proj₁) y) curr) stack | 
        any ((λ x y → equalAtom ⦃ at ⦄ (proj₁ x) (proj₁ y)) curr) visited
 ... | (y ∷ ys) | _ = 
-  if mod ((length ∘ filterᵇ (isNot ∘ proj₁)) (y ∷ ys)) 2 ≡ᵇ 1 
+  if mod ((length ∘ filterᵇ (isNot ∘ proj₁)) (curr ∷ y ∷ ys)) 2 ≡ᵇ 1 
   then curr ∷ y ∷ ys , visited
   else [] , visited
 ... | [] | true = [] , visited
@@ -117,9 +128,9 @@ appendNotSelf x with (ASP.types.isFalse ∘ ClauseI.head) x
 ... | false with (last ∘ ClauseI.body) x
 ... | nothing = x
 ... | (just (constraint _)) = x
-... | (just (atom ⦃ ft ⦄ ⦃ at ⦄ y)) with equalAtom ⦃ at ⦄ (ClauseI.head x) y
+... | (just (atom ⦃ ft ⦄ ⦃ at ⦄ y)) with (is-just ∘ zipMatch at (ClauseI.head x) ∘ toggle) y
 ... | true = x
-... | false = _:--_ (ClauseI.head x) (ClauseI.body x ++ (atom ⦃ ft ⦄ ⦃ at ⦄ y) ∷ []) ⦃ ft ⦄ ⦃ at ⦄
+... | false = _:--_ (ClauseI.head x) (ClauseI.body x ++ ((atom ⦃ ft ⦄ ⦃ at ⦄ ∘ toggle ∘ ClauseI.head) x) ∷ []) ⦃ ft ⦄ ⦃ at ⦄
 
 toChk : 
   ∀ {Atom 𝒞 Code Constraint}
@@ -180,7 +191,7 @@ computeNMR :
   → ⦃ DecEq 𝒞 ⦄
   → List (ClauseI Atom 𝒞 Code Constraint)
   → List (ClauseI (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
-computeNMR x with (Data.List.map normalize ∘ findOLON) x
+computeNMR x with (Data.List.map normalize ∘ findOLON) x ++ (Data.List.map normalize ∘ filterᵇ (ASP.types.isFalse ∘ ClauseI.head)) x
 ... | y = (nmrCheck :-- Data.List.map atom ((Data.List.map makeTopLevelBodyForNMR ∘ zipWith _,_ ((upTo ∘ suc ∘ length) y)) y)) ∷ 
   (concat ∘ Data.List.map makeNMRRule ∘ zipWith _,_ ((upTo ∘ suc ∘ length) y)) y
 

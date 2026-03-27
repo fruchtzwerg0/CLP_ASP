@@ -233,6 +233,31 @@ module program where
   question = 
     FD𝒞 ↪ (varFD 0) ＃< (＃ (pos 10)) ∧ travelPath (＃ (pos 1)) (varFD 0) (varList 1) •ₐ
     
-  realTravel = (toIntern  ∘ proj₂ ∘ applyVars travelingSalesma) 0
+  realTravel = (toIntern ∘ proj₂ ∘ applyVars travelingSalesma) 0
 
   getNmr = computeNMR realTravel
+  getNmra = findOLON ((cycle (varFD 0) (varFD 1) :--
+        (atom (edge (varFD 0) (varFD 1)) ∷
+        atom (fnot (other (varFD 0) (varFD 1))) ∷ []))
+        ∷
+        (other (varFD 0) (varFD 1) :--
+        (atom (node (varFD 0)) ∷
+        atom (node (varFD 1)) ∷
+        atom (node (varFD 2)) ∷
+        atom (edge (varFD 0) (varFD 2)) ∷
+        constraint (inj₁ (FD𝒞 :-: (varFD 1 ≠ℒ varFD 2))) ∷
+        atom (cycle (varFD 0) (varFD 2)) ∷ []))
+        ∷ [])
+  adj = getAdjacent ((cycle (varFD 0) (varFD 1) :--
+        (atom (edge (varFD 0) (varFD 1)) ∷
+        atom (fnot (other (varFD 0) (varFD 1))) ∷ []))
+        ∷
+        (other (varFD 0) (varFD 1) :--
+        (atom (node (varFD 0)) ∷
+        atom (node (varFD 1)) ∷
+        atom (node (varFD 2)) ∷
+        atom (edge (varFD 0) (varFD 2)) ∷
+        constraint (inj₁ (FD𝒞 :-: (varFD 1 ≠ℒ varFD 2))) ∷
+        atom (cycle (varFD 0) (varFD 2)) ∷ []))
+        ∷ []) (cycle (varFD 0) (varFD 1) , 0)
+  getOlon = findOLON realTravel
