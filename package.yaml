@@ -21,7 +21,7 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-- megaparsec
+- process
 - text
 - template-haskell
 - mtl
@@ -41,7 +41,7 @@ ghc-options:
 library:
   source-dirs: 
     - src
-    - src\CLP-agda
+    - src/CLP-agda
 
 executables:
   CLP-Parser-exe:

@@ -16,14 +16,16 @@ open import Function.Base
 open import FD.domain
 open import CLP.types
 
+-- Expressions
 data Expr : Set where
-  Lit : Int    → Expr
+  Lit : Int → Expr
   Var : String → Expr
-  Add : Expr   → Expr → Expr
-  Sub : Expr   → Expr → Expr
-  Mul : Expr   → Expr → Expr
-  Div : Expr   → Expr → Expr
+  Add : Expr → Expr → Expr
+  Sub : Expr → Expr → Expr
+  Mul : Expr → Expr → Expr
+  Div : Expr → Expr → Expr
 
+-- Constraints
 data Constraint : Set where
   Lt  : Expr → Expr → Constraint
   Gt  : Expr → Expr → Constraint
@@ -35,17 +37,22 @@ data Constraint : Set where
 Store : Set
 Store = List Constraint
 
-Binding : Set
-Binding = String × ℕ
+-- Agda Binding record mirrors the new Haskell type
+record Binding : Set where
+  constructor MkBinding
+  field
+    var : String
+    val : Int
 
+-- Foreign Haskell interface
 {-# FOREIGN GHC
   import System.IO.Unsafe (unsafePerformIO)
   import FDSolver
-  import Data.Text (Text, unpack, pack)
+  import Data.Text (Text, pack, unpack)
 
   toHsExpr :: Expr -> FDSolver.Expr
   toHsExpr (Lit n)     = FDSolver.Lit (fromIntegral n)
-  toHsExpr (Var v)     = FDSolver.Var (unpack v)
+  toHsExpr (Var v)     = FDSolver.Var v
   toHsExpr (Add a b)   = FDSolver.Add (toHsExpr a) (toHsExpr b)
   toHsExpr (Sub a b)   = FDSolver.Sub (toHsExpr a) (toHsExpr b)
   toHsExpr (Mul a b)   = FDSolver.Mul (toHsExpr a) (toHsExpr b)
@@ -62,18 +69,21 @@ Binding = String × ℕ
   toHsStore :: [Constraint] -> FDSolver.Store
   toHsStore = map toHsConstraint
 
-  fromHsBinding :: (String, Int) -> (Text, Integer)
-  fromHsBinding (v, n) = (pack v, fromIntegral n)
+  fromHsBinding :: FDSolver.Binding -> Binding
+  fromHsBinding (FDSolver.MkBinding v n) = MkBinding { var = v, val = n }
 
   agdaIsSatisfiable :: [Constraint] -> IO Bool
-  agdaIsSatisfiable store = isSatisfiable (toHsStore store)
+  agdaIsSatisfiable store = FDSolver.isSatisfiable (toHsStore store)
 
-  agdaLabeling :: [Constraint] -> IO (Maybe [(Text, Integer)])
+  agdaLabeling :: [Constraint] -> IO (Maybe [Binding])
   agdaLabeling store = do
-    result <- labeling (toHsStore store)
-    return (fmap (map fromHsBinding) result)
+    result <- FDSolver.labeling (toHsStore store)
+    case result of
+      Nothing -> return Nothing
+      Just bs -> return (Just (map fromHsBinding bs))
 #-}
 
+-- Compile directives to use the Haskell types
 {-# COMPILE GHC Expr
     = data FDSolver.Expr
       ( FDSolver.Lit
@@ -94,6 +104,12 @@ Binding = String × ℕ
       | FDSolver.Neq
       ) #-}
 
+{-# COMPILE GHC Binding
+    = data FDSolver.Binding
+      ( FDSolver.MkBinding )
+#-}
+
+-- Pure wrappers for use inside Agda
 postulate
   isSatisfiablePure : Store → Bool
   labelingPure      : Store → Maybe (List Binding)
@@ -103,26 +119,27 @@ postulate
 {-# COMPILE GHC labelingPure =
     \store -> unsafePerformIO (agdaLabeling store) #-}
 
+-- FD → Expr translation
 toTerm : FD → Expr
 toTerm (x ＃+ y) = Add (toTerm x) (toTerm y)
 toTerm (x ＃- y) = Sub (toTerm x) (toTerm y)
 toTerm (x ＃* y) = Mul (toTerm x) (toTerm y)
 toTerm (div x y) = Div (toTerm x) (toTerm y)
-toTerm (＃ x) = Lit x
-toTerm (varFD x) = Var (primShowNat x)
+toTerm (＃ x)     = Lit x
+toTerm (varFD x)  = Var (primShowNat x)
 
 toConstraint : ℒ FD ⊎ Dual ℒFD → Constraint
-toConstraint (inj₁ (x =ℒ y)) = Eq (toTerm x) (toTerm y)
+toConstraint (inj₁ (x =ℒ y)) = Eq  (toTerm x) (toTerm y)
 toConstraint (inj₁ (x ≠ℒ y)) = Neq (toTerm x) (toTerm y)
 toConstraint (inj₂ (default (x ≤FD y))) = Leq (toTerm x) (toTerm y)
-toConstraint (inj₂ (dual (x ≤FD y))) = Gt (toTerm x) (toTerm y)
+toConstraint (inj₂ (dual (x ≤FD y)))    = Gt  (toTerm x) (toTerm y)
 toConstraint (inj₂ (default (x ≥FD y))) = Geq (toTerm x) (toTerm y)
-toConstraint (inj₂ (dual (x ≥FD y))) = Lt (toTerm x) (toTerm y)
+toConstraint (inj₂ (dual (x ≥FD y)))    = Lt  (toTerm x) (toTerm y)
 
-fdSolve : 
+fdSolve :
   List (ℒ FD ⊎ Dual ℒFD)
   → (List ∘ List) (ℒ FD ⊎ Dual ℒFD)
-fdSolve constraints = 
-    ((λ x → if x then constraints ∷ [] else []) 
-    ∘ isSatisfiablePure 
+fdSolve constraints =
+    ((λ x → if x then constraints ∷ [] else [])
+    ∘ isSatisfiablePure
     ∘ Data.List.map toConstraint) constraints
