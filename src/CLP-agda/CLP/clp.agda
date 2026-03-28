@@ -112,6 +112,20 @@ eval _ _ .(forget split) (atom at ∷ left) right | matches split _ _
 eval intercept custom program (constraint cnstr ∷ left) right with (schedule ∘ Data.List.map (_∷_ cnstr)) right
 eval intercept custom program (constraint cnstr ∷ left) right | newConstraints = intercept  custom program left newConstraints
 
+{-# TERMINATING #-}
+defaultIntercept :
+  ∀ {Atom 𝒞 Code Constraint Custom}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ FTUtils Atom ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → EvalType Atom 𝒞 Code Constraint Custom
+defaultIntercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ = 
+  eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (defaultIntercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
+
 -- Entry point for clp executions. Can be parameterized with conversion from CST to AST with convertProgram (for the program) and convertQuestion (for the question)
 -- An intercepter can be passed, in which the SLD-resolution can be adapted (for example co-SLD), and meta predicates can be executed.
 -- Custom is a custom state that can be passed (also through the intercepter), and that can be used for custom outputs with custom additional information

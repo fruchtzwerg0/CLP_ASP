@@ -53,19 +53,19 @@ instance  ftUtilsFunctor : ∀ {A} → ⦃ FTUtils A ⦄ → FTUtils (Functor A)
 foldFunctor = deriveFold functorD
 
 -- These are general functions that we need in the generic CLP scheme.
-instance  atomUtils : (c : My𝒞) → ⦃ ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ ⦄ → ⦃ FTUtils ⟦ c ⟧ ⦄ → ⦃ FTUtils ⟦ c ⟧ℒ ⦄ → ⦃ DecEq ⟦ c ⟧ ⦄ → AtomUtils (Functor ⟦ c ⟧) My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          atomUtils co .zipMatch (append a b c) (append x y z) = 
-            just ((_:-:_ (list𝒞 (×𝒞 co co)) (a =ℒ x) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (c =ℒ z) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-          atomUtils co .zipMatch (hanoi a b c d e) (hanoi x y z f g) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ co (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ co (c =ℒ z) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ co (d =ℒ f) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (e =ℒ g) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
-          atomUtils co .zipMatch (hanoiMoves a b) (hanoiMoves x y) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (b =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) ∷ [])
+instance  atomUtils : (c : My𝒞) → ⦃ FTUtils ⟦ c ⟧ ⦄ → ⦃ FTUtils ⟦ c ⟧ℒ ⦄ → ⦃ DecEq ⟦ c ⟧ ⦄ → ⦃ MakeVar ⟦ c ⟧ ⦄ → AtomUtils (Functor ⟦ c ⟧) My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          atomUtils co ⦃ ft ⦄ ⦃ ftc ⦄ ⦃ dec ⦄ ⦃ mkv ⦄ .zipMatch (append a b c) (append x y z) = 
+            just ((_:-:_ (list𝒞 (×𝒞 co co)) (a =ℒ x)) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (b =ℒ y)) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (c =ℒ z)) ∷ [])
+          atomUtils co ⦃ ft ⦄ ⦃ ftc ⦄ ⦃ dec ⦄ ⦃ mkv ⦄ .zipMatch (hanoi a b c d e) (hanoi x y z f g) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ co (b =ℒ y)) ∷ (_:-:_ co (c =ℒ z)) ∷ (_:-:_ co (d =ℒ f)) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (e =ℒ g)) ∷ [])
+          atomUtils co ⦃ ft ⦄ ⦃ ftc ⦄ ⦃ dec ⦄ ⦃ mkv ⦄ .zipMatch (hanoiMoves a b) (hanoiMoves x y) = 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (b =ℒ y)) ∷ [])
           atomUtils _ .zipMatch _ _ = nothing
-          atomUtils co ⦃ val ⦄ .increment n = 
+          atomUtils co .increment n = 
             foldFunctor 
-              (λ a b c → append (incrementList n a) (incrementList n b) (incrementList n c))
-              (λ a b c d e → hanoi (incrementFD n a) (increment val co n b) (increment val co n c) (increment val co n d) (incrementList n e))
-              (λ a b → hanoiMoves (incrementFD n a) (incrementList n b))
+              (λ a b c → append (increment valueUtils (list𝒞 (×𝒞 co co)) n a) (increment valueUtils (list𝒞 (×𝒞 co co)) n b) (increment valueUtils (list𝒞 (×𝒞 co co)) n c))
+              (λ a b c d e → hanoi (incrementFD n a) (increment valueUtils co n b) (increment valueUtils co n c) (increment valueUtils co n d) (increment valueUtils (list𝒞 (×𝒞 co co)) n e))
+              (λ a b → hanoiMoves (incrementFD n a) (increment valueUtils (list𝒞 (×𝒞 co co)) n b))
 
 module program where
   open CLP.types
@@ -133,4 +133,25 @@ module program where
   question = 
     hanoiMoves (＃ (pos 3)) (varList 0) •ₐ
 
-  execute = clpExecute id id ? (record {}) ((toIntern ∘ proj₂ ∘ applyVars (hanoiProgram ⦃ atomUtils FD𝒞 ⦄)) 0) (toLiteralList question)
+  execute : Maybe (⊤ × (List ∘ List) ((Σᵢ My𝒞 (ℒ ∘ ⟦_⟧) ⟦_⟧ ⟦_⟧ℒ) ⊎ (Σᵢ My𝒞 (Dual ∘ ⟦_⟧ℒ) ⟦_⟧ ⟦_⟧ℒ)))
+  execute = (head ∘ 
+    clpExecute 
+      ⦃ decMy𝒞 ⦄ 
+      ⦃ ftUtilsFunctor ⦃ ftUtilsFD ⦄ ⦄ 
+      ⦃ constraintUtils ⦄ 
+      ⦃ valueUtils ⦄ 
+      ⦃ atomUtils FD𝒞 ⦄ 
+      ⦃ solver ⦄ 
+      ⦃ scheduler ⦄ 
+      id 
+      id 
+      (defaultIntercept
+        ⦃ decMy𝒞 ⦄ 
+        ⦃ ftUtilsFunctor ⦃ ftUtilsFD ⦄ ⦄ 
+        ⦃ constraintUtils ⦄ 
+        ⦃ valueUtils ⦄ 
+        ⦃ atomUtils FD𝒞 ⦄ 
+        ⦃ solver ⦄ 
+        ⦃ scheduler ⦄)
+      (record {})
+      ((toIntern ∘ proj₂ ∘ applyVars (hanoiProgram ⦃ atomUtils FD𝒞 ⦄)) 0)) (toLiteralList (question ⦃ atomUtils FD𝒞 ⦄))

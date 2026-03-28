@@ -82,5 +82,5 @@ zipMatch⊎ c₀ c₁ (p x) (p y) = just ((_:-:_ c₀ (x =ℒ y)) ∷ [])
 zipMatch⊎ c₀ c₁ (q x) (q y) = just ((_:-:_ c₁ (x =ℒ y)) ∷ [])
 zipMatch⊎ _ _ _ _ = nothing
 
-increment⊎ : ∀ {A B} → ℕ → ⊎Logic A B → ⊎Logic A B
-increment⊎ x = fold⊎ p q (λ y → var⊎ (x + y))
+increment⊎ : ∀ {A B} → (ℕ → A → A) → (ℕ → B → B) → ℕ → ⊎Logic A B → ⊎Logic A B
+increment⊎ inc₀ inc₁ x = fold⊎ (p ∘ inc₀ x) (q ∘ inc₁ x) (λ y → var⊎ (x + y))

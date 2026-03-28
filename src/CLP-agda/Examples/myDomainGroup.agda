@@ -137,9 +137,9 @@ instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
             ∘ zipMatchList c ⦃ mapType c ⦄ ⦃ mapConstraint c ⦄ ⦃ mapDecEq c ⦄ ⦃ mapMakeVar c ⦄ x
           valueUtils .increment Bool𝒞 = incrementBool
           valueUtils .increment FD𝒞 = incrementFD
-          valueUtils .increment (⊎𝒞 c₀ c₁) = increment⊎
-          valueUtils .increment (×𝒞 c₀ c₁) = increment×
-          valueUtils .increment (list𝒞 c) = incrementList
+          valueUtils .increment (⊎𝒞 c₀ c₁) = increment⊎ (increment valueUtils c₀) (increment valueUtils c₁)
+          valueUtils .increment (×𝒞 c₀ c₁) = increment× (increment valueUtils c₀) (increment valueUtils c₁)
+          valueUtils .increment (list𝒞 c) = incrementList (increment valueUtils c)
           valueUtils .apply Bool𝒞 Bool𝒞 = applyBool
           valueUtils .apply FD𝒞 FD𝒞 = applyFD
           valueUtils .apply (⊎𝒞 c₀ c₁) (⊎𝒞 c₂ c₃) = apply⊎ c₀ c₁ c₂ c₃ (apply valueUtils (⊎𝒞 c₀ c₁) c₂) (apply valueUtils (⊎𝒞 c₀ c₁) c₃)

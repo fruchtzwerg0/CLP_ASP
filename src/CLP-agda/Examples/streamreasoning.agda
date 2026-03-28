@@ -93,11 +93,11 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           atomUtils .increment n = 
             foldFunctor 
               fnot 
-              (λ a b → validStream (incrementFD n a) (increment⊎ n b))
-              (λ a b → stream (incrementFD n a) (increment⊎ n b))
-              (λ a b → cancelled (incrementFD n a) (increment⊎ n b))
+              (λ a b → validStream (incrementFD n a) (increment valueUtils (⊎𝒞 Bool𝒞 Bool𝒞) n b))
+              (λ a b → stream (incrementFD n a) (increment valueUtils (⊎𝒞 Bool𝒞 Bool𝒞) n b))
+              (λ a b → cancelled (incrementFD n a) (increment valueUtils (⊎𝒞 Bool𝒞 Bool𝒞) n b))
               (λ a b → higherPrio (incrementFD n a) (incrementFD n b))
-              (λ a b → incompt (increment⊎ n a) (increment⊎ n b))
+              (λ a b → incompt (increment valueUtils (⊎𝒞 Bool𝒞 Bool𝒞) n a) (increment valueUtils (⊎𝒞 Bool𝒞 Bool𝒞) n b))
               ffalse
 
 -- the streamreasoning example taken from "Constraint Answer Set Programming without Grounding"

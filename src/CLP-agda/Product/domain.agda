@@ -79,5 +79,5 @@ zipMatch× :
 zipMatch× c₀ c₁ (a ∶ b) (x ∶ y) = just ((_:-:_ c₀ (a =ℒ x)) ∷ (_:-:_ c₁ (b =ℒ y)) ∷ [])
 zipMatch× _ _ _ _ = nothing
 
-increment× : ∀ {A B} → ℕ → ×Logic A B → ×Logic A B
-increment× x = fold× _∶_ (λ y → var× (x + y))
+increment× : ∀ {A B} → (ℕ → A → A) → (ℕ → B → B) → ℕ → ×Logic A B → ×Logic A B
+increment× inc₀ inc₁ x = fold× (λ a b → inc₀ x a ∶ inc₁ x b) (λ y → var× (x + y))

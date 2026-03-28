@@ -99,12 +99,12 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           atomUtils .increment n = 
             foldFunctor 
               fnot 
-              (λ a b → nqueens (incrementFD n a) (incrementList n b))
-              (λ a b c d → nqueens₀ (incrementFD n a) (incrementFD n b) (incrementList n c) (incrementList n d))
+              (λ a b → nqueens (incrementFD n a) (increment valueUtils (list𝒞 (×𝒞 FD𝒞 FD𝒞)) n b))
+              (λ a b c d → nqueens₀ (incrementFD n a) (incrementFD n b) (increment valueUtils (list𝒞 (×𝒞 FD𝒞 FD𝒞)) n c) (increment valueUtils (list𝒞 (×𝒞 FD𝒞 FD𝒞)) n d))
               (λ a b c → pickqueen (incrementFD n a) (incrementFD n b) (incrementFD n c))
               (λ a b → qf (incrementFD n a) (incrementFD n b))
               (λ a b → negqf (incrementFD n a) (incrementFD n b))
-              (λ a b c → attack (incrementFD n a) (incrementFD n b) (incrementList n c))
+              (λ a b c → attack (incrementFD n a) (incrementFD n b) (increment valueUtils (list𝒞 (×𝒞 FD𝒞 FD𝒞)) n c))
               (λ a b → abs (incrementFD n a) (incrementFD n b))
               ffalse
 
