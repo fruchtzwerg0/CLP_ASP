@@ -19,7 +19,7 @@ open import CLP.types
 -- Expressions
 data Expr : Set where
   Lit : Int → Expr
-  Var : String → Expr
+  Var : ℕ → Expr
   Add : Expr → Expr → Expr
   Sub : Expr → Expr → Expr
   Mul : Expr → Expr → Expr
@@ -41,7 +41,7 @@ Store = List Constraint
 record Binding : Set where
   constructor MkBinding
   field
-    var : String
+    var : ℕ
     val : Int
 
 -- Foreign Haskell interface
@@ -126,7 +126,7 @@ toTerm (x ＃- y) = Sub (toTerm x) (toTerm y)
 toTerm (x ＃* y) = Mul (toTerm x) (toTerm y)
 toTerm (div x y) = Div (toTerm x) (toTerm y)
 toTerm (＃ x)     = Lit x
-toTerm (varFD x)  = Var (primShowNat x)
+toTerm (varFD x)  = Var x
 
 toConstraint : ℒ FD ⊎ Dual ℒFD → Constraint
 toConstraint (inj₁ (x =ℒ y)) = Eq  (toTerm x) (toTerm y)
@@ -140,6 +140,18 @@ fdSolve :
   List (ℒ FD ⊎ Dual ℒFD)
   → (List ∘ List) (ℒ FD ⊎ Dual ℒFD)
 fdSolve constraints =
-    ((λ x → if x then constraints ∷ [] else [])
-    ∘ isSatisfiablePure
-    ∘ Data.List.map toConstraint) constraints
+  ((λ x → if x then constraints ∷ [] else [])
+  ∘ isSatisfiablePure
+  ∘ Data.List.map toConstraint) constraints
+  
+maybeToList : {A : Set} → Maybe (List A) → List A
+maybeToList nothing  = []
+maybeToList (just x) = x
+
+labeling : 
+  List (ℒ FD ⊎ Dual ℒFD)
+  → List ((ℕ × FD) ⊎ (ℕ × FD))
+labeling constraints =
+  (Data.List.map (λ (MkBinding va vl) → inj₁ (va , ＃ vl))
+  ∘ maybeToList ∘ labelingPure
+  ∘ Data.List.map toConstraint) constraints

@@ -2,6 +2,7 @@ module Sum.domain where
 
 open import Data.Bool hiding (_≟_)
 open import Data.Nat hiding (_≟_)
+open import Data.Nat.Show
 open import Data.Maybe
 open import Data.List
 open import Function.Base
@@ -28,6 +29,9 @@ data ⊎Logic (A : Set) (B : Set) : Set where
 instance  decℕ : DecEq ℕ
           decℕ = deriveDecEq ℕD
 
+instance  showℕ : Show ℕ
+          showℕ .Generics.show = Data.Nat.Show.show
+
 instance  makeVar⊎ : ∀ {A B} → MakeVar (⊎Logic A B)
           makeVar⊎ .fresh = var⊎
           makeVar⊎ .new = var⊎ 0
@@ -42,6 +46,9 @@ fold⊎ = deriveFold ⊎D
 
 instance  dec⊎ : ∀ {A B} → ⦃ DecEq A ⦄ → ⦃ DecEq B ⦄ → DecEq (⊎Logic A B)
           dec⊎ = deriveDecEq ⊎D
+
+instance  show⊎ : ∀ {A B} → ⦃ Show A ⦄ → ⦃ Show B ⦄ → Show (⊎Logic A B)
+          show⊎ = deriveShow ⊎D
 
 apply⊎ : 
   {𝒞 : Set}
@@ -71,10 +78,14 @@ zipMatch⊎ :
   → ⦃ FTUtils (Constraint c₀) ⦄
   → ⦃ DecEq (Code c₀) ⦄
   → ⦃ MakeVar (Code c₀) ⦄
+  → ⦃ Show (Code c₀) ⦄
+  → ⦃ Show (Constraint c₀) ⦄
   → ⦃ FTUtils (Code c₁) ⦄
   → ⦃ FTUtils (Constraint c₁) ⦄
   → ⦃ DecEq (Code c₁) ⦄
   → ⦃ MakeVar (Code c₁) ⦄
+  → ⦃ Show (Code c₁) ⦄
+  → ⦃ Show (Constraint c₁) ⦄
   → ⊎Logic (Code c₀) (Code c₁)
   → ⊎Logic (Code c₀) (Code c₁)
   → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))

@@ -102,7 +102,15 @@ checkASP :
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → (ASPAtom Atom 𝒞 Code Constraint)
-  → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint))
+  → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint) × String)
+
+addToJustification : 
+  ∀ {Atom 𝒞 Code Constraint}
+  → ℕ
+  → ASPAtom Atom 𝒞 Code Constraint
+  → List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+  → String
+addToJustification n at = "\n" ++ (concat ∘ replicate n) " " ++ show at ++ "[" ++ (defaultFormat false ∘ collectVarsᵥ) at ++ "]"
 
 -- The intercepter used for ASP. Gets called by eval instead of a recursive call, and allows for injection of additional behaviour
 -- In this case, co-SLD resolution, the forall meta predicate and the dynamic chs and loop checks are implemented in here.
@@ -119,25 +127,25 @@ interceptASP :
   → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
-  → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint))
+  → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint) × String)
 
-checkASP at (chs , stack) program goals constraints with checkCHS constraints chs at
-... | inj₂ _ = ((chs , stack) , constraints) ∷ []                                       -- CHS success
+checkASP at (chs , stack , justification) program goals constraints with checkCHS constraints chs at
+... | inj₂ _ = ((chs , stack , justification) , constraints) ∷ []                                       -- CHS success
 ... | inj₁ newConstraints with checkLoops newConstraints stack at 0                     -- CHS neutral
-... | inj₂ _ = eval interceptASP (chs , stack) program (atom at ∷ goals) newConstraints -- Loop neutral
+... | inj₂ _ = eval interceptASP (chs , (at ∷ stack) , justification ++ newJustification ((suc ∘ length) stack constraints) at) program (atom at ∷ goals) newConstraints -- Loop neutral
 ... | inj₁ [] = []                                                                      -- Loop fail
-... | inj₁ (x ∷ xs) = ((chs , stack) , x ∷ xs) ∷ []                                     -- Loop success
+... | inj₁ (x ∷ xs) = ((chs , stack , justification) , x ∷ xs) ∷ []                                     -- Loop success
 
-interceptASP (chs , stack) program (constraint cn ∷ goals) constraints = 
-  eval interceptASP (chs , stack) program (constraint cn ∷ goals) constraints
-interceptASP {Atom}{C}{Code}{Constraint} (chs , stack) program (atom (forAll v x) ∷ goals) constraints with collectVarsᵥ C Code Constraint v
-interceptASP (chs , stack) program (atom (forAll v x) ∷ goals) constraints | (n ∷ _) =
-  if cForall n (eval interceptASP (chs , stack) program (atom x ∷ goals) [])
-  then eval interceptASP (chs , stack) program goals constraints
+interceptASP (chs , stack , justification) program (constraint cn ∷ goals) constraints = 
+  eval interceptASP (chs , stack , justification) program (constraint cn ∷ goals) constraints
+interceptASP {Atom}{C}{Code}{Constraint} (chs , stack , justification) program (atom (forAll v x) ∷ goals) constraints with collectVarsᵥ C Code Constraint v
+interceptASP (chs , stack , justification) program (atom (forAll v x) ∷ goals) constraints | (n ∷ _) =
+  if cForall n (eval interceptASP (chs , stack , justification) program (atom x ∷ goals) [])
+  then eval interceptASP (chs , stack , justification) program goals constraints
   else []
-interceptASP (chs , stack) program (atom (forAll v x) ∷ goals) constraints | [] =
-  checkASP (forAll v x) (chs , stack) program goals constraints
-interceptASP (chs , stack) program (atom at ∷ goals) constraints = 
-  checkASP at (chs , stack) program goals constraints
+interceptASP (chs , stack , justification) program (atom (forAll v x) ∷ goals) constraints | [] =
+  checkASP (forAll v x) (chs , stack , justification) program goals constraints
+interceptASP (chs , stack , justification) program (atom at ∷ goals) constraints = 
+  checkASP at (chs , stack , justification) program (atom at ∷ goals) constraints
 interceptASP x y [] z = 
   eval interceptASP x y [] z

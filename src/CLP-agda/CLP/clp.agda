@@ -5,13 +5,12 @@ open import CLP.ftUtilsDerivation
 open import CLP.utilities
 open import Views.find
 open import Views.findall
-open import Data.Bool
+open import Data.Bool hiding (_≟_)
 open import Data.String 
   using (String; _==_)
 open import Data.Nat 
   using (ℕ; suc; _≡ᵇ_; _⊔_; _⊓_; _+_)
-open import Data.List 
-  using (List; []; _∷_; _++_; map; length; zip; zipWith; concat; foldr)
+open import Data.List
 open import Data.Maybe 
   using (Maybe; just; nothing; map; is-just)
 open import Data.Product 
@@ -25,6 +24,8 @@ open import Relation.Nullary.Decidable as Decidable
 open import Relation.Binary.PropositionalEquality
 
 open import Generics
+
+open import CLP.outputFormatter
 
 maybeToList : {A : Set} → Maybe (List A) → List A
 maybeToList nothing  = []
@@ -76,7 +77,6 @@ eval :
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
-  --→ ⦃ Grounder 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → (intercept : 
     ⦃ DecEq 𝒞 ⦄
@@ -85,7 +85,6 @@ eval :
     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
     → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
     → ⦃ Solver 𝒞 Code Constraint ⦄
-    --→ ⦃ Grounder 𝒞 Code Constraint ⦄
     → ⦃ Scheduler 𝒞 Code Constraint ⦄
     → EvalType Atom 𝒞 Code Constraint Custom)
   → EvalType Atom 𝒞 Code Constraint Custom
@@ -126,6 +125,24 @@ defaultIntercept :
 defaultIntercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ = 
   eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (defaultIntercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
 
+{-# TERMINATING #-}
+groundSchedule :
+  ∀ {𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ Grounder 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → List 𝒞
+  → List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+  → List ((Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint))
+groundSchedule _ [] = []
+groundSchedule c ((inj₁ (c₀ :-: x)) ∷ xs) = 
+  (Data.List.map (generalizeGround c₀) ∘ ground c₀ ∘ catMaybes ∘ Data.List.map (getPermission c₀)) xs ++ 
+  groundSchedule (c₀ ∷ c) ((catMaybes ∘ Data.List.map (getElse c₀)) xs)
+groundSchedule c ((inj₂ (c₀ :-: x)) ∷ xs) = 
+  (Data.List.map (generalizeGround c₀) ∘ ground c₀ ∘ catMaybes ∘ Data.List.map (getPermission c₀)) xs ++ 
+  groundSchedule (c₀ ∷ c) ((catMaybes ∘ Data.List.map (getElse c₀)) xs)
+
 -- Entry point for clp executions. Can be parameterized with conversion from CST to AST with convertProgram (for the program) and convertQuestion (for the question)
 -- An intercepter can be passed, in which the SLD-resolution can be adapted (for example co-SLD), and meta predicates can be executed.
 -- Custom is a custom state that can be passed (also through the intercepter), and that can be used for custom outputs with custom additional information
@@ -138,7 +155,7 @@ clpExecute :
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
-  --→ ⦃ Grounder 𝒞 Code Constraint ⦄
+  → ⦃ Grounder 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → (convertProgram : List (ClauseI ConcreteAtom 𝒞 Code Constraint) → List (ClauseI AbstractAtom 𝒞 Code Constraint))
   → (convertQuestion : List (Literal ConcreteAtom 𝒞 Code Constraint) → List (Literal AbstractAtom 𝒞 Code Constraint))
@@ -149,17 +166,58 @@ clpExecute :
     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
     → ⦃ AtomUtils AbstractAtom 𝒞 Code Constraint ⦄
     → ⦃ Solver 𝒞 Code Constraint ⦄
-    --→ ⦃ Grounder 𝒞 Code Constraint ⦄
     → ⦃ Scheduler 𝒞 Code Constraint ⦄
     → EvalType AbstractAtom 𝒞 Code Constraint Custom)
+  → (shouldGround : Bool)
   → Custom
   → List (ClauseI ConcreteAtom 𝒞 Code Constraint)
   → List (Literal ConcreteAtom 𝒞 Code Constraint)
-  → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
-clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept custom program question = 
+  → List (Custom × 
+    List (if shouldGround 
+    then List ((Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint))
+    else List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))))
+clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept true custom program question = 
+  let result = eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ 
+                (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
+                custom 
+                (convertProgram program) 
+                (convertQuestion question)
+                [] in
+  let cust = Data.List.map proj₁ result in
+  let payl = Data.List.map proj₂ result in
+    Data.List.zip cust (
+      Data.List.map (
+        Data.List.map (groundSchedule [])) payl)
+clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept false custom program question = 
   eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ 
-    (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
-    custom 
-    (convertProgram program) 
-    (convertQuestion question) 
-    []
+                (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
+                custom 
+                (convertProgram program) 
+                (convertQuestion question)
+                []
+
+top : ⊤
+top = record {}
+
+defaultExecute : 
+  ∀ {Atom validate 𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ FTUtils Atom ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Grounder 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → (shouldGround : Bool)
+  → Clause Atom validate 𝒞 Code Constraint
+  → Body Atom (validate bodyOfRule) 𝒞 Code Constraint
+  → (List ∘ List) String
+defaultExecute {_}{_}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ shouldGround program question = 
+  (Data.List.map (Data.List.map (formatOutput shouldGround (collectVarsᵥ C Code Constraint (toLiteralList question))) ∘ proj₂) ∘ clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
+      id 
+      id 
+      (defaultIntercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
+      shouldGround
+      top
+      ((toIntern ∘ proj₂ ∘ applyVars program) 0)) (toLiteralList question)

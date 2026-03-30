@@ -73,6 +73,8 @@ record Σᵢ A B Code Cns where
     ⦃ instftcns ⦄ : FTUtils (Cns code)
     ⦃ decval ⦄ : DecEq (Code code)
     ⦃ makeVar ⦄ : MakeVar (Code code)
+    ⦃ showVal ⦄ : Show (Code code)
+    ⦃ showCns ⦄ : Show (Cns code)
 open Σᵢ public
 
 record AtomUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
@@ -211,7 +213,7 @@ record Grounder (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set
      → ⦃ FTUtils (Constraint c) ⦄ 
      → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
      → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
-     → List ((ℕ × Code c) ⊎ (Code c × (List ∘ Code) c))
+     → List ((ℕ × Code c) ⊎ (ℕ × Code c))
 open Grounder ⦃...⦄ public
 
 record Scheduler (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where

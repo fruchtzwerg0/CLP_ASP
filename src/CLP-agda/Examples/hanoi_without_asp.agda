@@ -10,6 +10,7 @@ open import Data.Maybe hiding (_>>=_)
 open import Data.Empty
 open import Data.Unit hiding (_≟_)
 open import Function.Base
+open import Data.String hiding (head)
 
 open import Generics
 
@@ -53,12 +54,12 @@ instance  ftUtilsFunctor : ∀ {A} → ⦃ FTUtils A ⦄ → FTUtils (Functor A)
 foldFunctor = deriveFold functorD
 
 -- These are general functions that we need in the generic CLP scheme.
-instance  atomUtils : (c : My𝒞) → ⦃ FTUtils ⟦ c ⟧ ⦄ → ⦃ FTUtils ⟦ c ⟧ℒ ⦄ → ⦃ DecEq ⟦ c ⟧ ⦄ → ⦃ MakeVar ⟦ c ⟧ ⦄ → AtomUtils (Functor ⟦ c ⟧) My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          atomUtils co ⦃ ft ⦄ ⦃ ftc ⦄ ⦃ dec ⦄ ⦃ mkv ⦄ .zipMatch (append a b c) (append x y z) = 
+instance  atomUtils : (c : My𝒞) → ⦃ FTUtils ⟦ c ⟧ ⦄ → ⦃ FTUtils ⟦ c ⟧ℒ ⦄ → ⦃ DecEq ⟦ c ⟧ ⦄ → ⦃ MakeVar ⟦ c ⟧ ⦄ → ⦃ Show ⟦ c ⟧ ⦄ → ⦃ Show ⟦ c ⟧ℒ ⦄ → AtomUtils (Functor ⟦ c ⟧) My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          atomUtils co ⦃ ft ⦄ ⦃ ftc ⦄ ⦃ dec ⦄ ⦃ mkv ⦄ ⦃ sho ⦄ ⦃ shoc ⦄ .zipMatch (append a b c) (append x y z) = 
             just ((_:-:_ (list𝒞 (×𝒞 co co)) (a =ℒ x)) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (b =ℒ y)) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (c =ℒ z)) ∷ [])
-          atomUtils co ⦃ ft ⦄ ⦃ ftc ⦄ ⦃ dec ⦄ ⦃ mkv ⦄ .zipMatch (hanoi a b c d e) (hanoi x y z f g) = 
+          atomUtils co ⦃ ft ⦄ ⦃ ftc ⦄ ⦃ dec ⦄ ⦃ mkv ⦄ ⦃ sho ⦄ ⦃ shoc ⦄ .zipMatch (hanoi a b c d e) (hanoi x y z f g) = 
             just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ co (b =ℒ y)) ∷ (_:-:_ co (c =ℒ z)) ∷ (_:-:_ co (d =ℒ f)) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (e =ℒ g)) ∷ [])
-          atomUtils co ⦃ ft ⦄ ⦃ ftc ⦄ ⦃ dec ⦄ ⦃ mkv ⦄ .zipMatch (hanoiMoves a b) (hanoiMoves x y) = 
+          atomUtils co ⦃ ft ⦄ ⦃ ftc ⦄ ⦃ dec ⦄ ⦃ mkv ⦄ ⦃ sho ⦄ ⦃ shoc ⦄ .zipMatch (hanoiMoves a b) (hanoiMoves x y) = 
             just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ (list𝒞 (×𝒞 co co)) (b =ℒ y)) ∷ [])
           atomUtils _ .zipMatch _ _ = nothing
           atomUtils co .increment n = 
@@ -133,25 +134,14 @@ module program where
   question = 
     hanoiMoves (＃ (pos 3)) (varList 0) •ₐ
 
-  execute : Maybe (⊤ × (List ∘ List) ((Σᵢ My𝒞 (ℒ ∘ ⟦_⟧) ⟦_⟧ ⟦_⟧ℒ) ⊎ (Σᵢ My𝒞 (Dual ∘ ⟦_⟧ℒ) ⟦_⟧ ⟦_⟧ℒ)))
+  execute : (Maybe ∘ Maybe) String
   execute = (head ∘ 
-    clpExecute 
+    defaultExecute 
       ⦃ decMy𝒞 ⦄ 
       ⦃ ftUtilsFunctor ⦃ ftUtilsFD ⦄ ⦄ 
       ⦃ constraintUtils ⦄ 
       ⦃ valueUtils ⦄ 
       ⦃ atomUtils FD𝒞 ⦄ 
       ⦃ solver ⦄ 
-      ⦃ scheduler ⦄ 
-      id 
-      id 
-      (defaultIntercept
-        ⦃ decMy𝒞 ⦄ 
-        ⦃ ftUtilsFunctor ⦃ ftUtilsFD ⦄ ⦄ 
-        ⦃ constraintUtils ⦄ 
-        ⦃ valueUtils ⦄ 
-        ⦃ atomUtils FD𝒞 ⦄ 
-        ⦃ solver ⦄ 
-        ⦃ scheduler ⦄)
-      (record {})
-      ((toIntern ∘ proj₂ ∘ applyVars (hanoiProgram ⦃ atomUtils FD𝒞 ⦄)) 0)) (toLiteralList (question ⦃ atomUtils FD𝒞 ⦄))
+      true
+      (hanoiProgram ⦃ atomUtils FD𝒞 ⦄)) (question ⦃ atomUtils FD𝒞 ⦄) Data.Maybe.>>= just ∘ head

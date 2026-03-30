@@ -147,12 +147,13 @@ aspExecute :
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → (shouldGround : Bool)
   → Clause Atom validate 𝒞 Code Constraint
   → Body Atom (validate bodyOfRule) 𝒞 Code Constraint
-  → List ((List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint)) × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
-aspExecute program goal with (toIntern  ∘ proj₂ ∘ applyVars program) 0 | toLiteralList goal
-aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ a ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ asp ⦄ ⦃ x ⦄ ⦃ y ⦄ ⦃ z ⦄ program goal | internProgram | internGoal =
-  clpExecute {Atom}{ASPAtom Atom C Code Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄
+  → String
+aspExecute shouldGround program goal with (toIntern  ∘ proj₂ ∘ applyVars program) 0 | toLiteralList goal
+aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ a ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ asp ⦄ ⦃ x ⦄ ⦃ y ⦄ ⦃ z ⦄ shouldGround program goal | internProgram | internGoal =
+  (aspFormat shouldGround ∘ clpExecute {Atom}{ASPAtom Atom C Code Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄
     (λ x → Data.List.map (λ y → _:--_ ((toNewAtom ⦃ ClauseI.instAt y ⦄ ∘ ClauseI.head) y)
                           (Data.List.map (toNewLiteral ⦃ ft ⦄ ⦃ solv ⦄ (toNewAtom ⦃ ClauseI.instAt y ⦄)) (ClauseI.body y))
                           ⦃ ft ⦄ ⦃ solv ⦄) x 
@@ -161,5 +162,5 @@ aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃
     (addNMR ⦃ solv ⦄ ⦃ ft ⦄)
     (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ asp ⦄ ⦃ x ⦄ ⦃ y ⦄)
     ([] , []) 
-    internProgram 
+    internProgram) 
     internGoal

@@ -91,18 +91,13 @@ library
       MAlonzo.Code.Algebra.Solver.Ring.Simple
       MAlonzo.Code.Algebra.Structures
       MAlonzo.Code.Algebra.Structures.Biased
-      MAlonzo.Code.ASP.Qasp
-      MAlonzo.Code.ASP.Qcforall
-      MAlonzo.Code.ASP.Qdual
-      MAlonzo.Code.ASP.Qloops
-      MAlonzo.Code.ASP.Qnmr
-      MAlonzo.Code.ASP.Qtypes
       MAlonzo.Code.Axiom.Extensionality.Propositional
       MAlonzo.Code.Axiom.UniquenessOfIdentityProofs
       MAlonzo.Code.Bool.Qdomain
       MAlonzo.Code.CLP.Qclp
       MAlonzo.Code.CLP.QdomainUniverseGeneration
       MAlonzo.Code.CLP.QftUtilsDerivation
+      MAlonzo.Code.CLP.QoutputFormatter
       MAlonzo.Code.CLP.QsolverScheduler
       MAlonzo.Code.CLP.Qtypes
       MAlonzo.Code.CLP.QunifyDisunify
@@ -217,8 +212,8 @@ library
       MAlonzo.Code.Effect.Functor
       MAlonzo.Code.Effect.Monad
       MAlonzo.Code.Empty.Qdomain
+      MAlonzo.Code.Examples.Qhanoi_without_asp
       MAlonzo.Code.Examples.QmyDomainGroup
-      MAlonzo.Code.Examples.Qstreamreasoning
       MAlonzo.Code.FD.Qdomain
       MAlonzo.Code.FD.Qsolver
       MAlonzo.Code.Function

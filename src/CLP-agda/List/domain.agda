@@ -2,6 +2,7 @@ module List.domain where
 
 open import Data.Bool hiding (_≟_)
 open import Data.Nat hiding (_≟_)
+open import Data.Nat.Show
 open import Data.Maybe
 open import Data.List
 open import Data.Product
@@ -29,6 +30,9 @@ listD = deriveDesc ListLogic
 instance  decℕ : DecEq ℕ
           decℕ = deriveDecEq ℕD
 
+instance  showℕ : Show ℕ
+          showℕ .Generics.show = Data.Nat.Show.show
+
 instance  makeVarList : ∀ {A} → MakeVar (ListLogic A)
           makeVarList .fresh = varList
           makeVarList .new = varList 0
@@ -43,6 +47,9 @@ foldList = deriveFold listD
 
 instance  decList : ∀ {A} → ⦃ DecEq A ⦄ → DecEq (ListLogic A)
           decList = deriveDecEq listD
+
+instance  showList : ∀ {A} → ⦃ Show A ⦄ → Show (ListLogic A)
+          showList = deriveShow listD
 
 applyList : 
   {𝒞 : Set}
@@ -68,6 +75,8 @@ zipMatchList :
   → ⦃ FTUtils (Constraint c) ⦄
   → ⦃ DecEq (Code c) ⦄
   → ⦃ MakeVar (Code c) ⦄
+  → ⦃ Show (Code c) ⦄
+  → ⦃ Show (Constraint c) ⦄
   → ListLogic (Code c)
   → ListLogic (Code c)
   → Maybe (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) × List (ℒ (ListLogic (Code c))))

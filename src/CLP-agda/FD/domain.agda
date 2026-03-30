@@ -2,10 +2,12 @@ module FD.domain where
 
 open import Data.Bool
 open import Data.Nat
+open import Data.Nat.Show
 open import Data.Maybe
 open import Data.List
 open import Function.Base
 open import Agda.Builtin.Int
+open import Data.Integer.Show
 
 open import Generics
 open import CLP.ftUtilsDerivation
@@ -53,6 +55,9 @@ IntD = deriveDesc Int
 instance  decℕ : DecEq ℕ
           decℕ = deriveDecEq ℕD
 
+instance  showℕ : Show ℕ
+          showℕ .Generics.show = Data.Nat.Show.show
+
 instance  makeVarFD : MakeVar FD
           makeVarFD .fresh = varFD
           makeVarFD .new = varFD 0
@@ -78,8 +83,17 @@ foldFD = deriveFold FDD
 instance  decInt : DecEq Int
           decInt = deriveDecEq IntD
 
+instance  showInt : Show Int
+          showInt .Generics.show = Data.Integer.Show.show
+
 instance  decFD : DecEq FD
           decFD = deriveDecEq FDD
+
+instance  showFD : Show FD
+          showFD = deriveShow FDD
+
+instance  showℒFD : Show ℒFD
+          showℒFD = deriveShow ℒFDD
 
 applyFD : ℕ → FD → FD → FD
 applyFD x subst = foldFD ＃_ _＃+_ _＃-_ _＃*_ div (λ y → if x ≡ᵇ y then subst else (varFD y))

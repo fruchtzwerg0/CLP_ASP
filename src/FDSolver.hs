@@ -18,13 +18,11 @@ import System.IO
 import System.IO.Unsafe     (unsafePerformIO)
 import System.Process
 
--- ── types ────────────────────────────────────────────────────────────────────
-
-data Binding = MkBinding { var :: Text, val :: Integer } deriving (Show, Eq)
+data Binding = MkBinding { var :: Integer, val :: Integer } deriving (Show, Eq)
 type Store   = [Constraint]
 
 data Expr
-  = Lit Integer | Var Text
+  = Lit Integer | Var Integer         -- Var now holds an Integer index
   | Add Expr Expr | Sub Expr Expr | Mul Expr Expr | Div Expr Expr
   deriving Show
 
@@ -32,6 +30,20 @@ data Constraint
   = Lt Expr Expr | Gt Expr Expr | Leq Expr Expr
   | Geq Expr Expr | Eq Expr Expr | Neq Expr Expr
   deriving Show
+
+-- ── var name encoding ─────────────────────────────────────────────────────────
+
+-- Integer index → Prolog variable name  (must start with uppercase)
+varName :: Integer -> String
+varName n = "Var" ++ show n
+
+-- Prolog variable name → Integer index  ("Var42" → Just 42)
+parseVarName :: String -> Maybe Integer
+parseVarName s
+  | take 3 s == "Var" = case reads (drop 3 s) of
+      [(n, "")] -> Just n
+      _         -> Nothing
+  | otherwise = Nothing
 
 -- ── solver process ────────────────────────────────────────────────────────────
 
@@ -51,8 +63,6 @@ getSolver = do
     Just s  -> return s
     Nothing -> do
       hPutStrLn stderr "[DEBUG] Spawning swipl..."
-      -- Use -g to load modules before the toplevel starts,
-      -- and --tty=false to disable any interactive prompt handling
       (Just hin, Just hout, Just herr, _) <- createProcess
         (proc "swipl"
           [ "-q"
@@ -71,12 +81,10 @@ getSolver = do
       hSetEncoding  hout utf8
       hSetBuffering herr NoBuffering
 
-      -- Drain stderr in background so it never blocks
       _ <- forkIO $ forever (hGetLine herr >>= \l ->
                       hPutStrLn stderr ("[SWIPL STDERR] " ++ l))
              `catch` (\(_ :: IOException) -> return ())
 
-      -- Send a plain goal (no :-) to confirm the process is alive
       hPutStrLn stderr "[DEBUG] Sending ready probe..."
       hPutStrLn hin "write('__READY__'), nl."
       hFlush hin
@@ -89,7 +97,7 @@ getSolver = do
       hPutStrLn stderr "[DEBUG] swipl ready."
       return s
 
--- ── I/O helpers ──────────────────────────────────────────────────────────────
+-- ── I/O helpers ───────────────────────────────────────────────────────────────
 
 drainUntil :: Handle -> String -> IO [String]
 drainUntil h sentinel = go []
@@ -98,14 +106,14 @@ drainUntil h sentinel = go []
       line <- hGetLine h
       hPutStrLn stderr $ "[DEBUG] < " ++ line
       if sentinel `isInfixOf` line
-        then return (reverse (line : acc))  -- include the sentinel line
+        then return (reverse (line : acc))
         else go (line : acc)
 
--- ── rendering ────────────────────────────────────────────────────────────────
+-- ── rendering ─────────────────────────────────────────────────────────────────
 
 renderExpr :: Expr -> String
 renderExpr (Lit n)   = show n
-renderExpr (Var v)   = unpack v
+renderExpr (Var n)   = varName n          -- Integer → "VarN"
 renderExpr (Add a b) = "(" ++ renderExpr a ++ "+"  ++ renderExpr b ++ ")"
 renderExpr (Sub a b) = "(" ++ renderExpr a ++ "-"  ++ renderExpr b ++ ")"
 renderExpr (Mul a b) = "(" ++ renderExpr a ++ "*"  ++ renderExpr b ++ ")"
@@ -119,10 +127,11 @@ renderConstraint (Geq a b) = renderExpr a ++ " #>= "  ++ renderExpr b
 renderConstraint (Eq  a b) = renderExpr a ++ " #= "   ++ renderExpr b
 renderConstraint (Neq a b) = renderExpr a ++ " #\\= " ++ renderExpr b
 
--- ── variable collection & capitalisation ─────────────────────────────────────
+-- ── variable collection ───────────────────────────────────────────────────────
 
-collectVars :: Store -> [Text]
-collectVars = nub . concatMap cvC
+-- Collect unique Integer indices from all Var nodes
+collectVarIds :: Store -> [Integer]
+collectVarIds = nub . concatMap cvC
   where
     cvC (Lt  a b) = cvE a ++ cvE b
     cvC (Gt  a b) = cvE a ++ cvE b
@@ -130,65 +139,46 @@ collectVars = nub . concatMap cvC
     cvC (Geq a b) = cvE a ++ cvE b
     cvC (Eq  a b) = cvE a ++ cvE b
     cvC (Neq a b) = cvE a ++ cvE b
-    cvE (Var v)   = [v]
+    cvE (Var n)   = [n]
     cvE (Lit _)   = []
     cvE (Add a b) = cvE a ++ cvE b
     cvE (Sub a b) = cvE a ++ cvE b
     cvE (Mul a b) = cvE a ++ cvE b
     cvE (Div a b) = cvE a ++ cvE b
 
-capVar :: Text -> Text
-capVar t = case T.uncons t of
-  Just (c, cs) -> T.cons (up c) cs
-  Nothing      -> t
-  where up x = if x >= 'a' && x <= 'z' then toEnum (fromEnum x - 32) else x
+-- ── query building ────────────────────────────────────────────────────────────
 
-capitaliseStore :: Store -> Store
-capitaliseStore = map capC
-  where
-    capC (Lt  a b) = Lt  (capE a) (capE b)
-    capC (Gt  a b) = Gt  (capE a) (capE b)
-    capC (Leq a b) = Leq (capE a) (capE b)
-    capC (Geq a b) = Geq (capE a) (capE b)
-    capC (Eq  a b) = Eq  (capE a) (capE b)
-    capC (Neq a b) = Neq (capE a) (capE b)
-    capE (Var v)   = Var (capVar v)
-    capE (Lit n)   = Lit n
-    capE (Add a b) = Add (capE a) (capE b)
-    capE (Sub a b) = Sub (capE a) (capE b)
-    capE (Mul a b) = Mul (capE a) (capE b)
-    capE (Div a b) = Div (capE a) (capE b)
-
--- ── query building ───────────────────────────────────────────────────────────
--- Note: no :- prefix — these are plain goals sent to the interactive toplevel
-
-buildQuery :: Store -> [Text] -> String -> String
-buildQuery store vars mode =
+buildQuery :: Store -> [Integer] -> String -> String
+buildQuery store varIds mode =
   let constraints = intercalate ", " (map renderConstraint store)
-      varList     = "[" ++ intercalate "," (map unpack vars) ++ "]"
+      varNames    = map varName varIds
+      varList     = "[" ++ intercalate "," varNames ++ "]"
       domainGoal  = varList ++ " ins -1000000..1000000"
       labelGoal   = "label(" ++ varList ++ ")"
-      printGoals  = intercalate ", " (map printGoal vars)
-      printGoal v = "format('~w=~w~n', ['" ++ unpack v ++ "', " ++ unpack v ++ "])"
+      printGoals  = intercalate ", " (map printGoal varNames)
+      printGoal v = "format('~w=~w~n', ['" ++ v ++ "', " ++ v ++ "])"
       body = case mode of
         "sat" -> intercalate ", " [domainGoal, constraints]
         _     -> intercalate ", " [domainGoal, constraints, labelGoal, printGoals]
   in "( " ++ body ++ " -> write('__SAT__') ; write('__UNSAT__') ), write('__END__'), nl."
 
--- ── running ───────────────────────────────────────────────────────────────────
+-- ── parsing ───────────────────────────────────────────────────────────────────
 
+-- Parse "Var42=7" → Just (MkBinding 42 7)
 parseBinding :: String -> Maybe Binding
 parseBinding s = case break (== '=') s of
-  (v, '=' : rest) -> case reads rest of
-    [(n, "")] -> Just (MkBinding (pack v) (fromIntegral (n :: Int)))
-    _         -> Nothing
+  (v, '=' : rest) ->
+    case (parseVarName v, reads rest) of
+      (Just idx, [(n, "")]) -> Just (MkBinding idx (fromIntegral (n :: Int)))
+      _                     -> Nothing
   _ -> Nothing
 
+-- ── running ───────────────────────────────────────────────────────────────────
+
 runQuery :: Store -> String -> IO (Bool, [Binding])
-runQuery rawStore mode = do
-  let store = capitaliseStore rawStore
-      vars  = collectVars store
-      query = buildQuery store vars mode
+runQuery store mode = do
+  let varIds = collectVarIds store
+      query  = buildQuery store varIds mode
   hPutStrLn stderr $ "[DEBUG] Query: " ++ query
   solver <- getSolver
   hPutStrLn (solverIn solver) query
@@ -196,7 +186,7 @@ runQuery rawStore mode = do
   hPutStrLn stderr "[DEBUG] Query sent, draining..."
   ls <- drainUntil (solverOut solver) "__END__"
   hPutStrLn stderr $ "[DEBUG] All lines: " ++ show ls
-  let allOutput = concat ls          -- check across the whole output, not line by line
+  let allOutput = concat ls
       sat       = "__SAT__" `isInfixOf` allOutput
       bindings  = if sat && mode == "label"
                     then mapMaybe parseBinding ls

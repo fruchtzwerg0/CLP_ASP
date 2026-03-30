@@ -2,6 +2,7 @@ module Bool.domain where
 
 open import Data.Bool
 open import Data.Nat
+open import Data.Nat.Show
 open import Data.Maybe
 open import Data.List
 open import Function.Base
@@ -24,6 +25,9 @@ boolD = deriveDesc BoolLogic
 instance  decℕ : DecEq ℕ
           decℕ = deriveDecEq ℕD
 
+instance  showℕ : Show ℕ
+          showℕ .Generics.show = Data.Nat.Show.show
+
 instance  makeVarBool : MakeVar BoolLogic
           makeVarBool .fresh = varBool
           makeVarBool .new = varBool 0
@@ -38,6 +42,9 @@ foldBool = deriveFold boolD
 
 instance  decBool : DecEq BoolLogic
           decBool = deriveDecEq boolD
+
+instance  showBool : Show BoolLogic
+          showBool = deriveShow boolD
 
 applyBool : ℕ → BoolLogic → BoolLogic → BoolLogic
 applyBool x subst = foldBool true false (λ y → if x ≡ᵇ y then subst else (varBool y))

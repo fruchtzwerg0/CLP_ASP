@@ -200,11 +200,11 @@ getElse x (inj₂ (b :-: a)) with x ≟ b
 generalize : ∀ {𝒞 Code Constraint}
  → (c : 𝒞)
  → ⦃ FTUtils (Code c) ⦄
- → ⦃ ValueUtils 𝒞 Code Constraint ⦄
  → ⦃ FTUtils (Constraint c) ⦄ 
- → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄ 
  → ⦃ DecEq (Code c) ⦄
  → ⦃ MakeVar (Code c) ⦄
+ → ⦃ Show (Code c) ⦄
+ → ⦃ Show (Constraint c) ⦄
  → (ℒ ∘ Code) c 
  → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint
 generalize c p  = _:-:_ c p
@@ -212,11 +212,49 @@ generalize c p  = _:-:_ c p
 generalizeCustom : ∀ {𝒞 Code Constraint}
  → (c : 𝒞)
  → ⦃ FTUtils (Code c) ⦄
- → ⦃ ValueUtils 𝒞 Code Constraint ⦄
  → ⦃ FTUtils (Constraint c) ⦄ 
- → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄ 
  → ⦃ DecEq (Code c) ⦄
  → ⦃ MakeVar (Code c) ⦄
+ → ⦃ Show (Code c) ⦄
+ → ⦃ Show (Constraint c) ⦄
  → (Dual ∘ Constraint) c 
  → Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint
 generalizeCustom c p  = _:-:_ c p
+
+generalizeEqual : ∀ {𝒞 Code Constraint}
+ → (c : 𝒞)
+ → ⦃ FTUtils (Code c) ⦄
+ → ⦃ FTUtils (Constraint c) ⦄ 
+ → ⦃ DecEq (Code c) ⦄
+ → ⦃ MakeVar (Code c) ⦄
+ → ⦃ Show (Code c) ⦄
+ → ⦃ Show (Constraint c) ⦄
+ → (ℕ × Code c) 
+ → Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint
+generalizeEqual c p  = _:-:_ c p
+
+generalizeDisequal : ∀ {𝒞 Code Constraint}
+ → (c : 𝒞)
+ → ⦃ FTUtils (Code c) ⦄
+ → ⦃ FTUtils (Constraint c) ⦄ 
+ → ⦃ DecEq (Code c) ⦄
+ → ⦃ MakeVar (Code c) ⦄
+ → ⦃ Show (Code c) ⦄
+ → ⦃ Show (Constraint c) ⦄
+ → ℕ × Code c
+ → Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint
+generalizeDisequal c p  = _:-:_ c p
+
+generalizeGround : 
+  ∀ {𝒞 Code Constraint}
+  → (c : 𝒞)
+  → ⦃ FTUtils (Code c) ⦄
+  → ⦃ FTUtils (Constraint c) ⦄ 
+  → ⦃ DecEq (Code c) ⦄
+  → ⦃ MakeVar (Code c) ⦄
+  → ⦃ Show (Code c) ⦄
+  → ⦃ Show (Constraint c) ⦄
+  → (ℕ × Code c) ⊎ (ℕ × Code c)
+  → (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint)
+generalizeGround c (inj₁ x) = (inj₁ ∘ generalizeEqual c) x
+generalizeGround c (inj₂ x) = (inj₂ ∘ generalizeDisequal c) x
