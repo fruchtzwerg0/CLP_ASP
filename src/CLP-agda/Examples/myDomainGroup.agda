@@ -184,10 +184,10 @@ instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
 -- FD has its own solver. Here, it needs to be converted back to the general dependent type.
 instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
           solver .solve Bool𝒞 = unifyDisunify Bool𝒞 ⦃ decMy𝒞 ⦄ ⦃ ftUtilsBool ⦄ ⦃ valueUtils ⦄ ⦃ ftUtils⊥ ⦄ ⦃ constraintUtils ⦄ ⦃ decBool ⦄ ⦃ makeVarBool ⦄ ⦃ showBool ⦄ ⦃ mapShowConstraint Bool𝒞 ⦄
-          solver .solve FD𝒞 = 
-            Data.List.map (Data.List.map 
+          solver .solve FD𝒞 _ _ (constraints , y) = 
+            (Data.List.map (λ x → (x , y)) ∘ Data.List.map (Data.List.map 
               (λ {(inj₁ x) → inj₁ (generalize FD𝒞 ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄ x) ; 
-                  (inj₂ x) → inj₂ (generalizeCustom FD𝒞 ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄ x)})) ∘ fdSolve
+                  (inj₂ x) → inj₂ (generalizeCustom FD𝒞 ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄ x)})) ∘ fdSolve) constraints
           solver .solve (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq (⊎𝒞 c₀ c₁) ⦄ ⦃ mapMakeVar (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShow (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (⊎𝒞 c₀ c₁) ⦄
           solver .solve (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq (×𝒞 c₀ c₁) ⦄ ⦃ mapMakeVar (×𝒞 c₀ c₁) ⦄ ⦃ mapShow (×𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (×𝒞 c₀ c₁) ⦄
           solver .solve (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq (list𝒞 c) ⦄ ⦃ mapMakeVar (list𝒞 c) ⦄ ⦃ mapShow (list𝒞 c) ⦄ ⦃ mapShowConstraint (list𝒞 c) ⦄

@@ -3,14 +3,12 @@ module CLP.clp where
 open import CLP.types
 open import CLP.ftUtilsDerivation
 open import CLP.utilities
-open import Views.find
-open import Views.findall
 open import Data.Bool hiding (_≟_)
 open import Data.String 
   using (String; _==_)
 open import Data.Nat 
   using (ℕ; suc; _≡ᵇ_; _⊔_; _⊓_; _+_)
-open import Data.List
+open import Data.List hiding (takeWhile; dropWhile)
 open import Data.Maybe 
   using (Maybe; just; nothing; map; is-just)
 open import Data.Product 
@@ -59,6 +57,18 @@ equalFunctor :
   → Bool
 equalFunctor ⦃ ft ⦄ l r = functor ⦃ ft ⦄ l == (functor ⦃ ft ⦄ ∘ ClauseI.head) r
 
+takeWhile : ∀ {a} {A : Set a} → (A → Bool) → List A → List A
+takeWhile p []       = []
+takeWhile p (x ∷ xs) with p x
+... | true  = x ∷ takeWhile p xs
+... | false = []
+
+dropWhile : ∀ {a} {A : Set a} → (A → Bool) → List A → List A
+dropWhile p []       = []
+dropWhile p (x ∷ xs) with p x
+... | true  = dropWhile p xs
+... | false = x ∷ xs
+
 EvalType : Set → (𝒞 : Set) → (𝒞 → Set) → (𝒞 → Set) → Set → Set
 EvalType Atom 𝒞 Code Constraint Custom = 
   Custom
@@ -93,23 +103,22 @@ eval :
 eval _ custom program [] right = (custom , right) ∷ []
 
 -- cases for splitting an atom into the body of its unified clause
-eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ _ _ program (atom at ∷ left) right with findAll (is-just ∘ zipMatch ato at ∘ ClauseI.head) program
+eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ _ _ program (atom at ∷ left) right with filterᵇ (is-just ∘ zipMatch ato at ∘ ClauseI.head) program
 
-eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ intercept custom .(forget split) (atom at ∷ left) right | matches split _ _
-  with Data.List.map (λ {cl → 
+eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ intercept custom program (atom at ∷ left) right | split =
+  (concat ∘ Data.List.map (λ cl → 
     intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
           custom 
-          (forget split)
+          program
           ((bindAndRename ⦃ ato ⦄ at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom ⦃ ft ⦄ ⦃ ato ⦄ at ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
-          right})
-      (first split)
-eval _ _ .(forget split) (atom at ∷ left) right | matches split _ _
-  | derivations with findAll (λ { (_ ∷ _) → true ; [] → false}) derivations
-eval _ _ .(forget split) (atom at ∷ left) right | matches split _ _
-  | .(forget splitNondet) | matches splitNondet _ _ = (concat ∘ first) splitNondet
+          right))
+      split
 
-eval intercept custom program (constraint cnstr ∷ left) right with (schedule ∘ Data.List.map (_∷_ cnstr)) right
-eval intercept custom program (constraint cnstr ∷ left) right | newConstraints = intercept  custom program left newConstraints
+eval intercept custom program (constraint cnstr ∷ left) right with 
+  (schedule ∘ Data.List.map (λ x → (_++_ x ∘ catMaybes ∘ takeWhile is-just ∘ Data.List.map (λ { (constraint x) → just x ; (atom _) → nothing })) (constraint cnstr ∷ left))) right
+eval intercept custom program (constraint cnstr ∷ left) right | [] = []
+eval intercept custom program (constraint cnstr ∷ left) right | newConstraints = 
+  intercept custom program (dropWhile (λ { (constraint _) → true ; (atom _) → false }) left) newConstraints
 
 {-# TERMINATING #-}
 defaultIntercept :
@@ -182,7 +191,7 @@ clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv �
                 custom 
                 (convertProgram program) 
                 (convertQuestion question)
-                [] in
+                ([] ∷ []) in
   let cust = Data.List.map proj₁ result in
   let payl = Data.List.map proj₂ result in
     Data.List.zip cust (
@@ -194,7 +203,7 @@ clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv �
                 custom 
                 (convertProgram program) 
                 (convertQuestion question)
-                []
+                ([] ∷ [])
 
 top : ⊤
 top = record {}

@@ -1,5 +1,3 @@
-{-# OPTIONS --allow-unsolved-metas #-}
-
 module CLP.solverScheduler where
 
 open import CLP.types
@@ -48,15 +46,20 @@ defaultSchedule₀ :
   → List (Σᵢ 𝒞 (λ _ → ⊤) Code Constraint)
   → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
-defaultSchedule₀ ⦃ dec ⦄ ⦃ val ⦄ ⦃ cns ⦄ ((_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) ∷ xs) unifications = 
-  let res = (solve c ⦃ dec ⦄ ⦃ instCode ⦄ ⦃ val ⦄ ⦃ instCns ⦄ ⦃ cns ⦄ ∘ catMaybes ∘ Data.List.map (getPermission c)) unifications in
-    (concat ∘ Data.List.map (λ y → defaultSchedule₀
+defaultSchedule₀ {C}{Code}{Constraint} ⦃ dec ⦄ ⦃ val ⦄ ⦃ cns ⦄ ((_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) ∷ xs) unifications = 
+  let res = solve 
+              c 
+              ⦃ dec ⦄ ⦃ instCode ⦄ ⦃ val ⦄ ⦃ instCns ⦄ ⦃ cns ⦄ 
+              (λ n sub → occursᵥ {listOf mixedConstraint} {⊤} C Code Constraint n sub) 
+              (λ n sub cns →  Data.List.map (applyMixedConstraint c n sub) cns) 
+              (((catMaybes ∘ Data.List.map (getPermission c)) unifications) , ((catMaybes ∘ Data.List.map (getElse c)) unifications)) in
+    (concat ∘ Data.List.map (λ (y , other) → defaultSchedule₀
       ((nubBy equal ∘ _++_ xs ∘ 
       Data.List.map (λ {(inj₁ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCode1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCode1 ⦄ ;
                         (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCode1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCode1 ⦄}) ∘ 
       catMaybes ∘ 
       (Data.List.map ∘ getElse) c) 
-      y) y)) res
+      y) (y ++ other))) res
 defaultSchedule₀ [] unifications = unifications ∷ []
 
 -- scheduler schedules the different solvers when multiple are used.

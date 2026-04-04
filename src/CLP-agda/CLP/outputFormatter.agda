@@ -3,8 +3,6 @@ module CLP.outputFormatter where
 open import CLP.types
 open import CLP.ftUtilsDerivation
 open import CLP.utilities
-open import Views.find
-open import Views.findall
 open import Data.Bool
 open import Data.String 
   using (String; _==_; _++_)
@@ -43,13 +41,13 @@ formatOutput :
   → String
 formatOutput true relevantVars = 
   joinWith ", " ∘ Data.List.map (λ 
-    { (inj₁ (c :-: (n , x))) → "var " ++ showNat n ++ "=" ++ show x ; 
-      (inj₂ (c :-: (n , x))) → "var " ++ showNat n ++ "=" ++ show x }) ∘ filterᵇ (λ 
+    { (inj₁ (c :-: (n , x))) → "var " ++ showNat n ++ " = " ++ show x ; 
+      (inj₂ (c :-: (n , x))) → "var " ++ showNat n ++ " = " ++ show x }) ∘ filterᵇ (λ 
     { (inj₁ (c :-: (n , x))) → any (_≡ᵇ_ n) relevantVars ; 
       (inj₂ (c :-: (n , x))) → any (_≡ᵇ_ n) relevantVars })
 formatOutput {C}{Code}{Constraint} false relevantVars = 
   joinWith ", " ∘ Data.List.map (λ 
-    { (inj₁ (c :-: (x =ℒ y))) → show x ++ "=" ++ show y ; 
-      (inj₁ (c :-: (x ≠ℒ y))) → show x ++ "/=" ++ show y ; 
+    { (inj₁ (c :-: (x =ℒ y))) → show x ++ " = " ++ show y ; 
+      (inj₁ (c :-: (x ≠ℒ y))) → show x ++ " /= " ++ show y ; 
       (inj₂ (c :-: default x)) → show x ;
-      (inj₂ (c :-: dual x)) → show x }) ∘ filterᵇ (λ x → any (λ y → (any (_≡ᵇ_ y) ∘ collectVarsᵥ {mixedConstraint} {ℕ} C Code Constraint) x) relevantVars)
+      (inj₂ (c :-: dual x)) → "! " ++ show x })

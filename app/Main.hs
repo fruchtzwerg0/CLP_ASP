@@ -7,6 +7,11 @@ import Data.Text (pack, unpack)
 
 main :: IO ()
 main = do
+  print execute
+
+{-
+main :: IO ()
+main = do
   let store =
         [ Geq (Var 0) (Lit 1)
         , Leq (Var 0) (Lit 10)
@@ -21,3 +26,4 @@ main = do
   case result of
     Nothing -> putStrLn "No solution."
     Just bs -> mapM_ (\b -> putStrLn $ "Var" ++ show (var b) ++ " = " ++ show (val b)) bs
+-}

@@ -22,13 +22,42 @@ applyConstraint :
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄ 
+  → (c₀ : 𝒞)
+  → (c₁ : 𝒞)
+  → ℕ 
+  → Code c₀
+  → (ℒ ∘ Code) c₁
+  → (ℒ ∘ Code) c₁
+applyConstraint ⦃ ft ⦄ c₀ c₁ k sub (x =ℒ y) = apply ft c₀ c₁ k sub x =ℒ apply ft c₀ c₁ k sub y
+applyConstraint ⦃ ft ⦄ c₀ c₁ k sub (x ≠ℒ y) = apply ft c₀ c₁ k sub x ≠ℒ apply ft c₀ c₁ k sub y
+
+applyCustomConstraint : 
+  {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄ 
+  → (c₀ : 𝒞)
+  → (c₁ : 𝒞)
+  → ℕ 
+  → Code c₀
+  → (Dual ∘ Constraint) c₁
+  → (Dual ∘ Constraint) c₁
+applyCustomConstraint ⦃ ft ⦄ c₀ c₁ k sub (default cust) = default (apply ft c₀ c₁ k sub cust)
+applyCustomConstraint ⦃ ft ⦄ c₀ c₁ k sub (dual cust) = dual (apply ft c₀ c₁ k sub cust)
+
+applyMixedConstraint : 
+  {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄ 
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄ 
   → (c : 𝒞)
   → ℕ 
   → Code c
-  → (ℒ ∘ Code) c
-  → (ℒ ∘ Code) c
-applyConstraint ⦃ ft ⦄ c k sub (x =ℒ y) = apply ft c c k sub x =ℒ apply ft c c k sub y
-applyConstraint ⦃ ft ⦄ c k sub (x ≠ℒ y) = apply ft c c k sub x ≠ℒ apply ft c c k sub y
+  → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint
+  → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint
+applyMixedConstraint ⦃ ft ⦄ c k sub (inj₁ (c₁ :-: l)) = (inj₁ (c₁ :-: applyConstraint ⦃ ft ⦄ c c₁ k sub l))
+applyMixedConstraint ⦃ _ ⦄ ⦃ ft ⦄ c k sub (inj₂ (c₁ :-: l)) = (inj₂ (c₁ :-: applyCustomConstraint ⦃ ft ⦄ c c₁ k sub l))
 
 -- generic occurs function occursᵥ extended by term.
 

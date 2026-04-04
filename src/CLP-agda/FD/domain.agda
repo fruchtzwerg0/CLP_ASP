@@ -4,7 +4,8 @@ open import Data.Bool
 open import Data.Nat
 open import Data.Nat.Show
 open import Data.Maybe
-open import Data.List
+open import Data.List hiding (_++_)
+open import Data.String hiding (_≟_)
 open import Function.Base
 open import Agda.Builtin.Int
 open import Data.Integer.Show
@@ -90,16 +91,27 @@ instance  decFD : DecEq FD
           decFD = deriveDecEq FDD
 
 instance  showFD : Show FD
-          showFD = deriveShow FDD
+          showFD .Generics.show (＃ x) = Generics.show x
+          showFD .Generics.show (x ＃+ y) = Generics.show x ++ " + " ++ Generics.show y
+          showFD .Generics.show (x ＃- y) = Generics.show x ++ " - " ++ Generics.show y
+          showFD .Generics.show (x ＃* y) = Generics.show x ++ " * " ++ Generics.show y
+          showFD .Generics.show (div x y) = Generics.show x ++ " / " ++ Generics.show y
+          showFD .Generics.show (varFD x) = "varFD " ++ Data.Nat.Show.show x
 
 instance  showℒFD : Show ℒFD
-          showℒFD = deriveShow ℒFDD
+          showℒFD .Generics.show (x ≤FD y) = Generics.show x ++ " <= " ++ Generics.show y
+          showℒFD .Generics.show (x ≥FD y) = Generics.show x ++ " >= " ++ Generics.show y
 
 applyFD : ℕ → FD → FD → FD
 applyFD x subst = foldFD ＃_ _＃+_ _＃-_ _＃*_ div (λ y → if x ≡ᵇ y then subst else (varFD y))
 
+equalInt : Int → Int → Bool
+equalInt (pos x) (pos y) = x ≡ᵇ y
+equalInt (negsuc x) (negsuc y) = x ≡ᵇ y
+equalInt _ _ = false
+
 zipMatchFD : FD → FD → (Maybe ∘ List ∘ ℒ) FD
-zipMatchFD (＃ x) (＃ y) = just ((＃ x) =ℒ (＃ y) ∷ [])
+zipMatchFD (＃ x) (＃ y) = if (equalInt x y) then just [] else nothing
 zipMatchFD (a ＃+ b) (x ＃+ y) = just (a =ℒ x ∷ b =ℒ y ∷ [])
 zipMatchFD (a ＃- b) (x ＃- y) = just (a =ℒ x ∷ b =ℒ y ∷ [])
 zipMatchFD (a ＃* b) (x ＃* y) = just (a =ℒ x ∷ b =ℒ y ∷ [])

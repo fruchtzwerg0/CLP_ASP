@@ -4,7 +4,8 @@ open import Data.Bool hiding (_≟_)
 open import Data.Nat hiding (_≟_)
 open import Data.Nat.Show
 open import Data.Maybe
-open import Data.List
+open import Data.List hiding (_++_)
+open import Data.String hiding (_≟_)
 open import Function.Base
 
 open import Relation.Nullary
@@ -47,7 +48,8 @@ instance  dec× : ∀ {A B} → ⦃ DecEq A ⦄ → ⦃ DecEq B ⦄ → DecEq (�
           dec× = deriveDecEq ×D
 
 instance  show× : ∀ {A B} → ⦃ Show A ⦄ → ⦃ Show B ⦄ → Show (×Logic A B)
-          show× = deriveShow ×D
+          show× ⦃ sh ⦄ .Generics.show (x ∶ y) = "(" ++ Generics.show x ++ " : " ++ Generics.show y ++ ")"
+          show× .Generics.show (var× x) = "varx " ++ Data.Nat.Show.show x
 
 apply× : 
   {𝒞 : Set}

@@ -4,7 +4,8 @@ open import Data.Bool hiding (_≟_)
 open import Data.Nat hiding (_≟_)
 open import Data.Nat.Show
 open import Data.Maybe
-open import Data.List
+open import Data.List hiding (_++_)
+open import Data.String hiding (_≟_)
 open import Data.Product
 open import Function.Base
 
@@ -49,7 +50,9 @@ instance  decList : ∀ {A} → ⦃ DecEq A ⦄ → DecEq (ListLogic A)
           decList = deriveDecEq listD
 
 instance  showList : ∀ {A} → ⦃ Show A ⦄ → Show (ListLogic A)
-          showList = deriveShow listD
+          showList ⦃ sh ⦄ .Generics.show (x ∷ xs) = "(" ++ Generics.show x ++ " :: " ++ Generics.show xs ++ ")"
+          showList .Generics.show [] = "[]"
+          showList .Generics.show (varList x) = "varList " ++ Data.Nat.Show.show x
 
 applyList : 
   {𝒞 : Set}
