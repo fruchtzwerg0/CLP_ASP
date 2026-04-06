@@ -32,6 +32,7 @@ open import ASP.types
 open import ASP.asp
 open import ASP.dual
 open import ASP.nmr
+open import ASP.loops
 
 open import Examples.myDomainGroup
 

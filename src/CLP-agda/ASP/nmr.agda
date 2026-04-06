@@ -35,11 +35,11 @@ index _ [] = nothing
 index zero (x ∷ xs) = just x
 index (suc n) (x ∷ xs) = index n xs
 
-takeWhile1 : ∀ {a} {A : Set a} → (A → Bool) → List A → List A
-takeWhile1 p []       = []
-takeWhile1 p (x ∷ xs) with p x
-... | true  = x ∷ takeWhile1 p xs
-... | false = x ∷ []
+takeUntilMatch : ∀ {a} {A : Set a} → (A → Bool) → List A → Maybe (List A)
+takeUntilMatch p [] = nothing
+takeUntilMatch p (x ∷ xs) with p x
+... | false = just (x ∷ [])
+... | true  = Data.Maybe.map (x ∷_) (takeUntilMatch p xs)
 
 cleanNot :
   ∀ {Atom 𝒞 Code Constraint}
@@ -96,18 +96,19 @@ findOLON₀ :
   → (curr : Atom × ℕ)
   → List (Atom × ℕ) × List (Atom × ℕ)
 findOLON₀ ⦃ at ⦄ program stack visited curr 
-  with takeWhile1 ((λ x y → (Data.Bool.not ∘ equalAtom ⦃ at ⦄ (proj₁ x) ∘ proj₁) y) curr) stack | 
+  with takeUntilMatch ((λ x y → (Data.Bool.not ∘ equalAtom ⦃ at ⦄ (proj₁ x) ∘ proj₁) y) curr) stack | 
        any ((λ x y → equalAtom ⦃ at ⦄ (proj₁ x) (proj₁ y)) curr) visited
-... | (y ∷ ys) | _ = 
+... | just (y ∷ ys) | _ = 
   if mod ((length ∘ filterᵇ (isNot ∘ proj₁)) (curr ∷ y ∷ ys)) 2 ≡ᵇ 1 
   then curr ∷ y ∷ ys , visited
   else [] , visited
-... | [] | true = [] , visited
-... | [] | false with getAdjacent program curr
+... | just [] | _ = [] , visited  -- shouldn't happen but needed for exhaustiveness
+... | nothing | true = [] , visited
+... | nothing | false with getAdjacent program curr
 ... | nothing = [] , visited
 ... | just x = foldr (λ newCurr (newResults , newVisited) → 
-  (proj₁ ∘ findOLON₀ program (curr ∷ stack) newVisited) newCurr ++ newResults , 
-  (proj₂ ∘ findOLON₀ program (curr ∷ stack) newVisited) newCurr) ([] , curr ∷ visited) x
+  let result = findOLON₀ program (curr ∷ stack) newVisited newCurr
+  in proj₁ result ++ newResults , proj₂ result) ([] , curr ∷ visited) x
 
 findOLON :
   ∀ {Atom 𝒞 Code Constraint}
@@ -211,5 +212,5 @@ addNMR :
   → List (Literal Atom 𝒞 Code Constraint)
   → List (Literal (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
 addNMR [] = atom nmrCheck ∷ []
-addNMR (atom x ∷ xs) = atom (wrap x 0 []) ∷ addNMR xs
+addNMR (atom ⦃ ft ⦄ ⦃ at ⦄ x ∷ xs) = atom (toNewAtom ⦃ at ⦄ x) ∷ addNMR xs
 addNMR (constraint x ∷ xs) = constraint x ∷ addNMR xs

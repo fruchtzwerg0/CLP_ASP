@@ -30,6 +30,8 @@ open import Sum.domain
 open import ASP.types
 open import ASP.asp
 open import ASP.dual
+open import ASP.nmr
+open import ASP.loops
 
 open import Examples.myDomainGroup
 
@@ -82,7 +84,7 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           atomUtils .zipMatch (move a b c) (move x y z) = 
             just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ (_:-:_ FD𝒞 (c =ℒ z)) ∷ [])
           atomUtils .zipMatch (move₀ a b c d e f) (move₀ x y z g h i) = 
-            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ 
+            just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ (_:-:_ FD𝒞 (c =ℒ y)) ∷ 
                   (_:-:_ FD𝒞 (d =ℒ g)) ∷ (_:-:_ FD𝒞 (e =ℒ h)) ∷ (_:-:_ FD𝒞 (f =ℒ i)) ∷ [])
           atomUtils .zipMatch (negmove a b c) (negmove x y z) = 
             just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ (_:-:_ FD𝒞 (c =ℒ z)) ∷ [])
@@ -142,10 +144,13 @@ module program where
   question :
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question = 
-    hanoi (＃ (pos 3)) (＃ (pos 3)) •ₐ
+    hanoi (＃ (pos 3)) (varFD 0) •ₐ
 
-  execute = (take 1 ∘ aspExecute hanoiProgram) question
+  execute = (take 1 ∘ aspExecute hanoiProgram question) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
 
   
   {-# COMPILE GHC execute as execute #-}
-  --getDuals = computeDuals (toIntern hanoiProgram)
+  
+  real = (toIntern  ∘ proj₂ ∘ applyVars hanoiProgram) 0
+  getDuals = computeDuals real
+  getNmr = computeNMR real

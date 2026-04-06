@@ -31,6 +31,7 @@ open import ASP.types
 open import ASP.asp
 open import ASP.dual
 open import ASP.nmr
+open import ASP.loops
 
 open import Examples.myDomainGroup
 
@@ -74,6 +75,9 @@ instance  aspUtils : ASPUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           aspUtils .isFalse _ = false
           aspUtils .toggle (fnot x) = x
           aspUtils .toggle x = fnot x
+
+instance showFunctor : Show Functor
+         showFunctor = deriveShow functorD
 
 -- These are general functions that we need in the generic CLP scheme.
 instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
@@ -165,5 +169,5 @@ module program where
   varTest = varName (varFD 0)
   --hormalize = ASP.dual.equal (FD𝒞 :-: (varFD 0)) (FD𝒞 :-: (＃ (pos 3)))
   collectVaff = collectVarsᵥ My𝒞 ⟦_⟧ ⟦_⟧ℒ realStream
-
+  getOlon = findOLON realStream
   getNmr = computeNMR realStream

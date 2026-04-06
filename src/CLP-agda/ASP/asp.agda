@@ -54,10 +54,11 @@ aspExecute :
   → ⦃ Show Atom ⦄
   → Clause Atom validate 𝒞 Code Constraint
   → Body Atom (validate bodyOfRule) 𝒞 Code Constraint
+  → (ASPAtom Atom 𝒞 Code Constraint → Bool)
   → List String
-aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄ program goal with (toIntern  ∘ proj₂ ∘ applyVars program) 0 | toLiteralList goal
-aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄ program goal | internProgram | internGoal =
-  (Data.List.map aspFormat ∘ clpExecute {Atom}{ASPAtom Atom C Code Constraint} ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
+aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄ program goal showAtom with (toIntern  ∘ proj₂ ∘ applyVars program) 0 | toLiteralList goal
+aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄ program goal showAtom | internProgram | internGoal =
+  (Data.List.map (aspFormat showAtom ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspShow ⦃ sho ⦄ ⦄) ∘ clpExecute {Atom}{ASPAtom Atom C Code Constraint} ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
     (λ x → Data.List.map (λ y → _:--_ ((toNewAtom ⦃ ClauseI.instAt y ⦄ ∘ ClauseI.head) y)
                           (Data.List.map (toNewLiteral ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ (toNewAtom ⦃ ClauseI.instAt y ⦄)) (ClauseI.body y))
                           ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄) x 

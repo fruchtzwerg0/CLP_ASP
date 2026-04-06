@@ -29,12 +29,14 @@ open import CLP.outputFormatter
 
 aspFormat : 
   ∀ {Atom 𝒞 Code Constraint}
+  → (ASPAtom Atom 𝒞 Code Constraint → Bool)
   → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ Show (ASPAtom Atom 𝒞 Code Constraint) ⦄
   → (ASPUtils Atom 𝒞 Code Constraint × Show Atom × List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint) × String) × 
     (List ∘ List) ((Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint))
   → String
-aspFormat {Atom}{C}{Code}{Constraint} ⦃ inst ⦄ ((_ , _ , chs , _ , justification) , (constraints ∷ _)) = 
+aspFormat {Atom}{C}{Code}{Constraint} showAtom ⦃ inst ⦄ ⦃ sho ⦄ ((_ , _ , chs , _ , justification) , (constraints ∷ _)) = 
   "CHS:\n" ++ (joinWith ", " ∘ 
-              Data.List.map (λ x → formatOutput true (collectVarsᵥ C Code Constraint (_<ᵢ x ⦃ inst ⦄)) constraints)) chs ++ 
+              Data.List.map (λ x → functor x ++ " with: " ++ formatOutput true (collectVarsᵥ C Code Constraint (_<ᵢ x ⦃ inst ⦄)) constraints) ∘ filterᵇ showAtom) chs ++ 
   "Justification:\n" ++ justification
-aspFormat _ = "unsat"
+aspFormat _ _ = "unsat"

@@ -153,10 +153,10 @@ checkCHS :
   → Atom
   → Bool ⊎ ⊤
 checkCHS ⦃ dec ⦄ ⦃ at ⦄ constraints x y with 
-  (any (Data.Bool.not ∘ null) ∘ Data.List.map (schedule ∘ concat ∘ Data.List.map (addToConstraintStore constraints) ∘ Data.List.map inj₁) ∘ catMaybes ∘ Data.List.map (zipMatch at (toggle y))) x
+  (any (Data.Bool.not ∘ null) ∘ Data.List.map (λ unif → (schedule ∘ Data.List.map (Data.List._++_ (Data.List.map inj₁ unif))) constraints) ∘ catMaybes ∘ Data.List.map (zipMatch at (toggle y))) x
 ... | true = inj₁ false
 ... | false with
-  (any (Data.Bool.not ∘ null) ∘ Data.List.map (schedule ∘ concat ∘ Data.List.map (addToConstraintStore constraints) ∘ Data.List.map inj₁) ∘ catMaybes ∘ Data.List.map (zipMatch at y)) x
+  (any (Data.Bool.not ∘ null) ∘ Data.List.map (λ unif → (schedule ∘ Data.List.map (Data.List._++_ (Data.List.map inj₁ unif))) constraints) ∘ catMaybes ∘ Data.List.map (zipMatch at y)) x
 ... | true = inj₁ true
 ... | false = inj₂ (record {})
 
@@ -178,15 +178,15 @@ checkLoops :
   → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) ⊎ ⊤
 checkLoops _ [] y n = inj₂ (record {})
 checkLoops ⦃ dec ⦄ ⦃ at ⦄ constraints (x ∷ xs) y n with 
-  zipMatch at x y Data.Maybe.>>= (just ∘ schedule ∘ concat ∘ Data.List.map (addToConstraintStore constraints) ∘ Data.List.map inj₁)
-... | just result =
+  zipMatch at x y Data.Maybe.>>= (λ unif → (just ∘ schedule ∘ Data.List.map (Data.List._++_ (Data.List.map inj₁ unif))) constraints)
+... | just result@(_ ∷ _) =
   if n ≡ᵇ 0 
   then inj₁ []
   else 
     if mod n 2 ≡ᵇ 0
     then inj₁ result
     else checkLoops constraints xs y (if isNot x then suc n else n)
-... | nothing =
+... | _ =
   checkLoops constraints xs y (if isNot x then suc n else n)
 
 {-# TERMINATING #-}
@@ -228,14 +228,14 @@ interceptASP :
   → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (ASPUtils Atom 𝒞 Code Constraint × Show Atom × List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint) × String)
 
 checkASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ at (aspU , sho , chs , stack , justification) program goals constraints with checkCHS ⦃ dec ⦄ ⦃ ato ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ aspAtomUtils ⦃ aspU ⦄ ⦄ constraints chs at
-... | inj₁ true = ((aspU , sho , chs , stack , justification) , constraints) ∷ []                    -- CHS success
+... | inj₁ true = interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , sho , chs , stack , justification) program goals constraints                    -- CHS success
 ... | inj₁ false = []                    -- CHS fail
 ... | inj₂ _ with checkLoops ⦃ dec ⦄ ⦃ ato ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ aspAtomUtils ⦃ aspU ⦄ ⦄ constraints stack at 0                     -- CHS neutral
 ... | inj₁ [] = []                                                                      -- Loop fail
-... | inj₁ (x ∷ xs) = ((aspU , sho , chs , stack , justification) , x ∷ xs) ∷ []                     -- Loop success
+... | inj₁ (x ∷ xs) = interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , sho , chs , stack , justification) program goals (x ∷ xs)                     -- Loop success
 ... | inj₂ _ = 
   let res = eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄) (aspU , sho , chs , (at ∷ stack) , justification Data.String.++ addToJustification ((suc ∘ length) stack) at ⦃ aspShow ⦃ sho ⦄ ⦄ ⦃ ft ⦄ constraints) program (atom ⦃ ft ⦄ ⦃ ato ⦄ at ∷ []) constraints in -- Loop neutral
-    (concat ∘ Data.List.map (λ ((aspU , sho , chs , stack , justification) , ans) → interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , sho , (at ∷ chs) , stack , justification) program goals ans)) res
+    (concat ∘ Data.List.map (λ ((aspU , sho , chs , newStack , justification) , newConstraints) → interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , sho , (at ∷ chs) , stack , justification) program goals newConstraints)) res
 
 interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , sho , chs , stack , justification) program (constraint cn ∷ goals) constraints = 
   eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄) (aspU , sho , chs , stack , justification) program (constraint cn ∷ goals) constraints
