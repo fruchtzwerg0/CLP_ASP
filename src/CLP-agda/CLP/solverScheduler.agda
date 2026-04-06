@@ -50,8 +50,8 @@ defaultSchedule₀ {C}{Code}{Constraint} ⦃ dec ⦄ ⦃ val ⦄ ⦃ cns ⦄ ((_
   let res = solve 
               c 
               ⦃ dec ⦄ ⦃ instCode ⦄ ⦃ val ⦄ ⦃ instCns ⦄ ⦃ cns ⦄ 
-              (λ n sub → occursᵥ {listOf mixedConstraint} {⊤} C Code Constraint n sub) 
-              (λ n sub cns →  Data.List.map (applyMixedConstraint c n sub) cns) 
+              (occursᵥ {listOf mixedConstraint} {⊤} C Code Constraint) 
+              (λ n sub → Data.List.map (applyMixedConstraint c n sub)) 
               (((catMaybes ∘ Data.List.map (getPermission c)) unifications) , ((catMaybes ∘ Data.List.map (getElse c)) unifications)) in
     (concat ∘ Data.List.map (λ (y , other) → defaultSchedule₀
       ((nubBy equal ∘ _++_ xs ∘ 

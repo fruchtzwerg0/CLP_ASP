@@ -1,7 +1,9 @@
+{-# OPTIONS_GHC -O2 #-}
+
 module Main (main) where
 
 
-import MAlonzo.Code.Examples.Qhanoi_without_asp
+import MAlonzo.Code.Examples.Qhanoi
 import FDSolver
 import Data.Text (pack, unpack)
 

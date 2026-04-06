@@ -6,8 +6,6 @@ open import CLP.types hiding (_>>=_)
 open import CLP.ftUtilsDerivation
 open import CLP.utilities
 open import ASP.types
-open import Views.find
-open import Views.findall
 open import Data.Bool hiding (_≟_)
 open import Data.String 
   using (String; _==_)
@@ -33,99 +31,7 @@ open import CLP.clp
 open import ASP.dual
 open import ASP.nmr
 open import ASP.loops
-
--- FTUtils needs to be implemented also for ASPAtom
-
-occursExi : 
-  ∀ {𝒞 Code Constraint}
-  → ℕ 
-  → Σᵢ 𝒞 Code Code Constraint 
-  → Bool
-occursExi n (_:-:_ c x) = occurs n x
-
-collectVarsExi : 
-  ∀ {𝒞 Code Constraint}
-  → Σᵢ 𝒞 Code Code Constraint 
-  → List ℕ
-collectVarsExi (_:-:_ c x) = collectVars x
-
-instance aspFT : ∀ {Atom 𝒞 Code Constraint} → ⦃ FTUtils Atom ⦄ → FTUtils (ASPAtom Atom 𝒞 Code Constraint)
-         aspFT .functor (wrap at _ _) = functor at
-         aspFT .functor (forAll _ _) = "forAll"
-         aspFT .functor nmrCheck = "nmrCheck"
-         aspFT .functor (chk _ _ _) = "chk"
-         aspFT .getNat _ = nothing
-         aspFT .varName _ = nothing
-         aspFT {At}{C}{Code}{Constraint} ⦃ ft ⦄ .occurs n (wrap at _ x) = occurs n at ∨ any (occursExi n) x
-         aspFT {At}{C}{Code}{Constraint} ⦃ ft ⦄ .occurs n (forAll x y) = occursExi n x ∨ occurs n y
-         aspFT .occurs n nmrCheck = false
-         aspFT {At}{C}{Code}{Constraint} ⦃ ft ⦄ .occurs n (chk _ _ x) = any (occursExi n) x
-         aspFT {At}{C}{Code}{Constraint} ⦃ ft ⦄ .collectVars (wrap at _ x) = collectVars at ++ (concat ∘ Data.List.map collectVarsExi) x
-         aspFT {At}{C}{Code}{Constraint} ⦃ ft ⦄ .collectVars (forAll x y) = collectVarsExi x ++ collectVars y
-         aspFT .collectVars nmrCheck = []
-         aspFT {At}{C}{Code}{Constraint} ⦃ ft ⦄ .collectVars (chk _ _ x) = (concat ∘ Data.List.map collectVarsExi) x
-
-incrementExi : 
-  ∀ {𝒞 Code Constraint}
-  → ⦃ ValueUtils 𝒞 Code Constraint ⦄ 
-  → ℕ 
-  → Σᵢ 𝒞 Code Code Constraint 
-  → Σᵢ 𝒞 Code Code Constraint
-incrementExi ⦃ val ⦄ n (_:-:_ c x) = (_:-:_ c (increment val c n x))
-
-zipMatchExi : 
-  ∀ {𝒞 Code Constraint}
-  → ⦃ DecEq 𝒞 ⦄ 
-  → List (Σᵢ 𝒞 Code Code Constraint) 
-  → List (Σᵢ 𝒞 Code Code Constraint) 
-  → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
-zipMatchExi (x ∷ xs) [] = nothing
-zipMatchExi [] (x ∷ xs) = nothing
-zipMatchExi [] [] = just []
-zipMatchExi ((_:-:_ c₀ x ⦃ ft ⦄ ⦃ val ⦄ ⦃ dec ⦄ ⦃ va ⦄) ∷ xs) ((_:-:_ c₁ y ⦃ _ ⦄ ⦃ _ ⦄) ∷ ys) with c₀ ≟ c₁
-... | yes refl = zipMatchExi xs ys Data.Maybe.>>= (just ∘ _∷_ (_:-:_ c₀ (x =ℒ y) ⦃ ft ⦄ ⦃ val ⦄ ⦃ dec ⦄ ⦃ va ⦄))
-... | no _ = nothing
-
--- AtomUtils needs to be implemented for ASPAtom
-
-instance aspAtom : ∀ {Atom 𝒞 Code Constraint} 
-                   → ⦃ DecEq 𝒞 ⦄
-                   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄ 
-                   → ⦃ ValueUtils 𝒞 Code Constraint ⦄ 
-                   → AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
-         aspAtom {_}{C}{Code}{Constraint} ⦃ _ ⦄ ⦃ at ⦄ .zipMatch (wrap at₀ n₀ x₀) (wrap at₁ n₁ x₁) = 
-          if (n₀ ≡ᵇ n₁) ∧ (is-just ∘ zipMatch at at₀) at₁
-          then zipMatchExi x₀ x₁
-          else nothing
-         aspAtom {_}{C}{Code}{Constraint} .zipMatch (forAll x₀ y₀) (forAll x₁ y₁) = 
-          zipMatch aspAtom y₀ y₁ Data.Maybe.>>= (λ y → zipMatchExi (x₀ ∷ []) (x₁ ∷ []) Data.Maybe.>>= (λ z → just (y ++ z)))
-         aspAtom .zipMatch nmrCheck nmrCheck = just []
-         aspAtom {_}{C}{Code}{Constraint} ⦃ at ⦄ .zipMatch (chk a₀ b₀ x₀) (chk a₁ b₁ x₁) = 
-          if (a₀ ≡ᵇ a₁) Data.Bool.∧ (b₀ ≡ᵇ b₁)
-          then zipMatchExi x₀ x₁
-          else nothing
-         aspAtom .zipMatch _ _ = nothing
-         aspAtom ⦃ _ ⦄ ⦃ att ⦄ .increment n (wrap at y x) = wrap (increment att n at) y (Data.List.map (incrementExi n) x)
-         aspAtom .increment n (forAll x y) = forAll (incrementExi n x) (increment aspAtom n y)
-         aspAtom .increment n nmrCheck = nmrCheck
-         aspAtom .increment n (chk a b x) = chk a b (Data.List.map (incrementExi n) x)
-
--- ASPUtils needs to be implemented for ASPAtom
-
-instance  aspAtomUtils : ∀ {Atom 𝒞 Code Constraint} → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄ → ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
-          aspAtomUtils .ASP.types.not (wrap at a b) = wrap (ASP.types.not at) a b
-          aspAtomUtils .ASP.types.not (forAll a b) = forAll a (ASP.types.not b)
-          aspAtomUtils .ASP.types.not nmrCheck = nmrCheck
-          aspAtomUtils .ASP.types.not (chk a b c) = chk a b c
-          aspAtomUtils .isNot (wrap at _ _) = isNot at
-          aspAtomUtils .isNot (forAll a b) = isNot b
-          aspAtomUtils .isNot nmrCheck = false
-          aspAtomUtils .isNot (chk a b c) = true
-          aspAtomUtils .ASP.types.isFalse _ = false
-          aspAtomUtils .toggle (wrap at a b) = wrap (toggle at) a b
-          aspAtomUtils .toggle (forAll a b) = forAll a (toggle b)
-          aspAtomUtils .toggle nmrCheck = nmrCheck
-          aspAtomUtils .toggle (chk a b c) = chk a b c
+open import ASP.outputFormatter
 
 -- Wrapper around clpExecute with parameterization for ASP-behavior. Entry point for executions of asp programs.
 -- The Custom state in this case is (List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint))
@@ -137,30 +43,29 @@ instance  aspAtomUtils : ∀ {Atom 𝒞 Code Constraint} → ⦃ ASPUtils Atom �
 aspExecute : 
   ∀ {Atom 𝒞 validate Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
-  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → ⦃ FTUtils Atom ⦄
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
-  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
-  → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Grounder 𝒞 Code Constraint ⦄
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
-  → ⦃ ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
-  → (shouldGround : Bool)
+  → ⦃ Show Atom ⦄
   → Clause Atom validate 𝒞 Code Constraint
   → Body Atom (validate bodyOfRule) 𝒞 Code Constraint
-  → String
-aspExecute shouldGround program goal with (toIntern  ∘ proj₂ ∘ applyVars program) 0 | toLiteralList goal
-aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ a ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ asp ⦄ ⦃ x ⦄ ⦃ y ⦄ ⦃ z ⦄ shouldGround program goal | internProgram | internGoal =
-  (aspFormat shouldGround ∘ clpExecute {Atom}{ASPAtom Atom C Code Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄
+  → List String
+aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄ program goal with (toIntern  ∘ proj₂ ∘ applyVars program) 0 | toLiteralList goal
+aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄ program goal | internProgram | internGoal =
+  (Data.List.map aspFormat ∘ clpExecute {Atom}{ASPAtom Atom C Code Constraint} ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
     (λ x → Data.List.map (λ y → _:--_ ((toNewAtom ⦃ ClauseI.instAt y ⦄ ∘ ClauseI.head) y)
-                          (Data.List.map (toNewLiteral ⦃ ft ⦄ ⦃ solv ⦄ (toNewAtom ⦃ ClauseI.instAt y ⦄)) (ClauseI.body y))
-                          ⦃ ft ⦄ ⦃ solv ⦄) x 
-    ++ computeNMR ⦃ cns ⦄ ⦃ val ⦄ ⦃ sched ⦄ ⦃ asp ⦄ ⦃ ft ⦄ ⦃ solv ⦄ ⦃ a ⦄ ⦃ dec ⦄ x 
-    ++ computeDuals ⦃ sched ⦄ ⦃ a ⦄ ⦃ solv ⦄ ⦃ val ⦄ ⦃ z ⦄ ⦃ cns ⦄ ⦃ ft ⦄ ⦃ dec ⦄ x) 
-    (addNMR ⦃ solv ⦄ ⦃ ft ⦄)
-    (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ asp ⦄ ⦃ x ⦄ ⦃ y ⦄)
-    ([] , []) 
+                          (Data.List.map (toNewLiteral ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ (toNewAtom ⦃ ClauseI.instAt y ⦄)) (ClauseI.body y))
+                          ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄) x 
+    ++ computeNMR ⦃ cns ⦄ ⦃ val ⦄ ⦃ as ⦄ ⦃ aspAtomUtils ⦃ as ⦄ ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ at ⦄ ⦃ dec ⦄ x 
+    ++ computeDuals ⦃ as ⦄ ⦃ at ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ val ⦄ ⦃ aspAtomUtils ⦃ as ⦄ ⦄ ⦃ cns ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ dec ⦄ x) 
+    (addNMR ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄)
+    (interceptASP ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
+    true
+    (as , sho ,  [] , [] , "") 
     internProgram) 
     internGoal

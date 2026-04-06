@@ -194,11 +194,11 @@ instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
 
 -- Here, for every domain a grounder can be added. This only returns some ground variable assignments for which the constraints hold
 instance  grounder : Grounder My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          grounder .ground Bool𝒞 = toVariableViews Bool𝒞 ⦃ decMy𝒞 ⦄ ⦃ ftUtilsBool ⦄ ⦃ valueUtils ⦄ ⦃ ftUtils⊥ ⦄ ⦃ constraintUtils ⦄ ⦃ decBool ⦄ ⦃ makeVarBool ⦄ ⦃ showBool ⦄ ⦃ mapShowConstraint Bool𝒞 ⦄
+          grounder .ground Bool𝒞 ap oc (x , other) = toVariableViews Bool𝒞 ⦃ decMy𝒞 ⦄ ⦃ ftUtilsBool ⦄ ⦃ valueUtils ⦄ ⦃ ftUtils⊥ ⦄ ⦃ constraintUtils ⦄ ⦃ decBool ⦄ ⦃ makeVarBool ⦄ ⦃ showBool ⦄ ⦃ mapShowConstraint Bool𝒞 ⦄ x , other
           grounder .ground FD𝒞 = labeling
-          grounder .ground (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = toVariableViews (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec⊎ ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShow (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (⊎𝒞 c₀ c₁) ⦄
-          grounder .ground (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = toVariableViews (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec× ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (×𝒞 c₀ c₁) ⦄ ⦃ mapShow (×𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (×𝒞 c₀ c₁) ⦄
-          grounder .ground (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = toVariableViews (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decList ⦃ mapDecEq c ⦄ ⦄ ⦃ mapMakeVar (list𝒞 c) ⦄ ⦃ mapShow (list𝒞 c) ⦄ ⦃ mapShowConstraint (list𝒞 c) ⦄
+          grounder .ground (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc (x , other) = toVariableViews (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec⊎ ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShow (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (⊎𝒞 c₀ c₁) ⦄ x , other
+          grounder .ground (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc (x , other) = toVariableViews (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec× ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (×𝒞 c₀ c₁) ⦄ ⦃ mapShow (×𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (×𝒞 c₀ c₁) ⦄ x , other
+          grounder .ground (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc (x , other) = toVariableViews (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decList ⦃ mapDecEq c ⦄ ⦄ ⦃ mapMakeVar (list𝒞 c) ⦄ ⦃ mapShow (list𝒞 c) ⦄ ⦃ mapShowConstraint (list𝒞 c) ⦄ x , other
 
 -- It is not recommended to modify the scheduler, defaultSchedule is perfectly safe and usable for any domain group.
 instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ

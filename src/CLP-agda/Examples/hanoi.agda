@@ -71,6 +71,9 @@ instance  aspUtils : ASPUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           aspUtils .toggle (fnot x) = x
           aspUtils .toggle x = fnot x
 
+instance showFunctor : Show Functor
+         showFunctor = deriveShow functorD
+
 -- These are general functions that we need in the generic CLP scheme.
 instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           atomUtils .zipMatch (fnot x) (fnot y) = zipMatch atomUtils x y
@@ -113,7 +116,6 @@ module program where
     hanoi N T :-
       move₀ N (＃ (pos 0)) T (＃ (pos 0)) (＃ (pos 1)) (＃ (pos 2)) •ₐ
     
-    N ← new
     Ti ← new
     Tf ← new
     T1 ← new
@@ -131,7 +133,6 @@ module program where
       move₀ N1 T2 Tf Px Pf Pi •ₐ
     
     move₀ (＃ (pos 1)) Ti Tf Pi Pf Px :-
-      FD𝒞 ↪ N ＃> ＃ (pos 1) ∧
       FD𝒞 ↣ Tf =ℒ Ti ＃+ ＃ (pos 1) ∧
       move Pi Pf Tf •ₐ
 
@@ -143,6 +144,8 @@ module program where
   question = 
     hanoi (＃ (pos 3)) (＃ (pos 3)) •ₐ
 
-  execute = (head ∘ aspExecute hanoiProgram) question
+  execute = (take 1 ∘ aspExecute hanoiProgram) question
 
-  getDuals = computeDuals (toIntern hanoiProgram)
+  
+  {-# COMPILE GHC execute as execute #-}
+  --getDuals = computeDuals (toIntern hanoiProgram)

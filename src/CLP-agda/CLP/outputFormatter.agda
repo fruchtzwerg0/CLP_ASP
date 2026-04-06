@@ -50,4 +50,4 @@ formatOutput {C}{Code}{Constraint} false relevantVars =
     { (inj₁ (c :-: (x =ℒ y))) → show x ++ " = " ++ show y ; 
       (inj₁ (c :-: (x ≠ℒ y))) → show x ++ " /= " ++ show y ; 
       (inj₂ (c :-: default x)) → show x ;
-      (inj₂ (c :-: dual x)) → "! " ++ show x })
+      (inj₂ (c :-: dual x)) → "! " ++ show x }) ∘ filterᵇ (λ x → any (λ y → (any (_≡ᵇ_ y) ∘ collectVarsᵥ {mixedConstraint} {ℕ} C Code Constraint) x) relevantVars)

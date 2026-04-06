@@ -62,7 +62,7 @@ getSolver = do
   case ms of
     Just s  -> return s
     Nothing -> do
-      hPutStrLn stderr "[DEBUG] Spawning swipl..."
+      --hPutStrLn stderr "[DEBUG] Spawning swipl..."
       (Just hin, Just hout, Just herr, _) <- createProcess
         (proc "swipl"
           [ "-q"
@@ -85,16 +85,16 @@ getSolver = do
                       hPutStrLn stderr ("[SWIPL STDERR] " ++ l))
              `catch` (\(_ :: IOException) -> return ())
 
-      hPutStrLn stderr "[DEBUG] Sending ready probe..."
+      --hPutStrLn stderr "[DEBUG] Sending ready probe..."
       hPutStrLn hin "write('__READY__'), nl."
       hFlush hin
-      hPutStrLn stderr "[DEBUG] Waiting for __READY__..."
+      --hPutStrLn stderr "[DEBUG] Waiting for __READY__..."
       ls <- drainUntil hout "__READY__"
-      hPutStrLn stderr $ "[DEBUG] Got ready lines: " ++ show ls
+      --hPutStrLn stderr $ "[DEBUG] Got ready lines: " ++ show ls
 
       let s = SolverProcess hin hout
       writeIORef solverRef (Just s)
-      hPutStrLn stderr "[DEBUG] swipl ready."
+      --hPutStrLn stderr "[DEBUG] swipl ready."
       return s
 
 -- ── I/O helpers ───────────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ drainUntil h sentinel = go []
   where
     go acc = do
       line <- hGetLine h
-      hPutStrLn stderr $ "[DEBUG] < " ++ line
+      --hPutStrLn stderr $ "[DEBUG] < " ++ line
       if sentinel `isInfixOf` line
         then return (reverse (line : acc))
         else go (line : acc)
@@ -179,13 +179,14 @@ runQuery :: Store -> String -> IO (Bool, [Binding])
 runQuery store mode = do
   let varIds = collectVarIds store
       query  = buildQuery store varIds mode
-  hPutStrLn stderr $ "[DEBUG] Query: " ++ query
+  --hPutStrLn stderr $ "[DEBUG] Mode: " ++ mode
+  --hPutStrLn stderr $ "[DEBUG] Query: " ++ query
   solver <- getSolver
   hPutStrLn (solverIn solver) query
   hFlush    (solverIn solver)
-  hPutStrLn stderr "[DEBUG] Query sent, draining..."
+  --hPutStrLn stderr "[DEBUG] Query sent, draining..."
   ls <- drainUntil (solverOut solver) "__END__"
-  hPutStrLn stderr $ "[DEBUG] All lines: " ++ show ls
+  --hPutStrLn stderr $ "[DEBUG] All lines: " ++ show ls
   let allOutput = concat ls
       sat       = "__SAT__" `isInfixOf` allOutput
       bindings  = if sat && mode == "label"

@@ -208,16 +208,20 @@ record Solver (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set))
      → List (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint) × A)
 open Solver ⦃...⦄ public
 
-record Grounder (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
+record Grounder (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set₁ where
   field
-    ground : (c : 𝒞)
+    ground : 
+     {A : Set}
+     → (c : 𝒞)
      → ⦃ DecEq 𝒞 ⦄
      → ⦃ FTUtils (Code c) ⦄
      → ⦃ ValueUtils 𝒞 Code Constraint ⦄
      → ⦃ FTUtils (Constraint c) ⦄ 
      → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
-     → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
-     → List ((ℕ × Code c) ⊎ (ℕ × Code c))
+     → (occurs : ℕ → A → Bool)
+     → (apply : ℕ → Code c → A → A)
+     → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c) × A
+     → List ((ℕ × Code c) ⊎ (ℕ × Code c)) × A
 open Grounder ⦃...⦄ public
 
 record Scheduler (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set₁ where

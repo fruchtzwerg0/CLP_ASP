@@ -149,9 +149,12 @@ maybeToList nothing  = []
 maybeToList (just x) = x
 
 labeling : 
-  List (ℒ FD ⊎ Dual ℒFD)
-  → List ((ℕ × FD) ⊎ (ℕ × FD))
-labeling constraints =
-  (Data.List.map (λ (MkBinding va vl) → inj₁ (va , ＃ vl))
+  {A : Set}
+  → (occurs : ℕ → A → Bool)
+  → (apply : ℕ → FD → A → A)
+  → List (ℒ FD ⊎ Dual ℒFD) × A
+  → List ((ℕ × FD) ⊎ (ℕ × FD)) × A
+labeling oc ap (constraints , a) =
+  (foldr (λ (MkBinding va vl) (acc , as) → inj₁ (va , ＃ vl) ∷ acc , ap va (＃ vl) as) ([] , a)
   ∘ maybeToList ∘ labelingPure
   ∘ Data.List.map toConstraint) constraints

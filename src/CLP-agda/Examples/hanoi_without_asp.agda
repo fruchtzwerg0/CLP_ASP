@@ -132,7 +132,7 @@ module program where
     ⦃ AtomUtils (Functor FD) My𝒞 ⟦_⟧ ⟦_⟧ℒ ⦄ →
     Body (Functor FD) (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question = 
-    hanoiMoves (＃ (pos 3)) (varList 0) •ₐ
+    hanoiMoves (＃ (pos 4)) (varList 0) •ₐ
     --append (varList 0) (varList 1) ((＃ (pos 2) ∶ ＃ (pos 1)) ∷ []) •ₐ
 {-
   unifyTest1 = unifyDisunify (list𝒞 (×𝒞 FD𝒞 FD𝒞))
@@ -200,7 +200,7 @@ module program where
   occursTest1 = occursConstraint My𝒞 (list𝒞 FD𝒞) ⟦_⟧ 0 ((varList 0) =ℒ [])
   -- (maybe′ (maybe′ id "") "") 
   execute : (List ∘ List) String
-  execute = (take 2 ∘ 
+  execute = (take 1 ∘ 
     defaultExecute 
       ⦃ decMy𝒞 ⦄ 
       ⦃ ftUtilsFunctor ⦃ ftUtilsFD ⦄ ⦄ 
@@ -208,7 +208,7 @@ module program where
       ⦃ valueUtils ⦄ 
       ⦃ atomUtils FD𝒞 ⦄ 
       ⦃ solver ⦄ 
-      false
+      true
       (hanoiProgram ⦃ atomUtils FD𝒞 ⦄)) (question ⦃ atomUtils FD𝒞 ⦄)
   
   {-# COMPILE GHC execute as execute #-}

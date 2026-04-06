@@ -142,15 +142,34 @@ groundSchedule :
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → List 𝒞
+  → List ((Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint))
   → List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
   → List ((Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint))
-groundSchedule _ [] = []
-groundSchedule c ((inj₁ (c₀ :-: x)) ∷ xs) = 
-  (Data.List.map (generalizeGround c₀) ∘ ground c₀ ∘ catMaybes ∘ Data.List.map (getPermission c₀)) xs ++ 
-  groundSchedule (c₀ ∷ c) ((catMaybes ∘ Data.List.map (getElse c₀)) xs)
-groundSchedule c ((inj₂ (c₀ :-: x)) ∷ xs) = 
-  (Data.List.map (generalizeGround c₀) ∘ ground c₀ ∘ catMaybes ∘ Data.List.map (getPermission c₀)) xs ++ 
-  groundSchedule (c₀ ∷ c) ((catMaybes ∘ Data.List.map (getElse c₀)) xs)
+groundSchedule c acc [] = acc
+groundSchedule {C}{Code}{Constraint} ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ val ⦄ c acc ((inj₁ (c₀ :-: x)) ∷ xs) = 
+  let (gr , (newOtherGround , newOther)) = ground 
+              c₀ 
+              (λ n (grou , nonGrou) → 
+                occursᵥ {listOf mixedConstraint} {⊤} C Code Constraint n nonGrou ∨
+                any (λ {(inj₁ (c :-: (_ , a))) → occurs n a ; (inj₂ (c :-: (_ , a))) → occurs n a } ) grou)
+              (λ n sub (grou , nonGrou) → 
+                Data.List.map (λ {(inj₁ (c :-: (m , a))) → (inj₁ (c :-: (m , apply val c₀ c n sub a))) ; 
+                                  (inj₂ (c :-: (m , a))) → (inj₂ (c :-: (m , apply val c₀ c n sub a))) } ) grou ,
+                Data.List.map (applyMixedConstraint c₀ n sub) nonGrou) 
+              ((inj₁ x ∷ (catMaybes ∘ Data.List.map (getPermission c₀)) xs) , (acc , (catMaybes ∘ Data.List.map (getElse c₀)) xs)) in
+  groundSchedule (c₀ ∷ c) (newOtherGround ++ Data.List.map (generalizeGround c₀) gr) newOther
+groundSchedule {C}{Code}{Constraint} ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ val ⦄ c acc ((inj₂ (c₀ :-: x)) ∷ xs) = 
+  let (gr , (newOtherGround , newOther)) = ground 
+              c₀ 
+              (λ n (grou , nonGrou) → 
+                occursᵥ {listOf mixedConstraint} {⊤} C Code Constraint n nonGrou ∨
+                any (λ {(inj₁ (c :-: (_ , a))) → occurs n a ; (inj₂ (c :-: (_ , a))) → occurs n a } ) grou)
+              (λ n sub (grou , nonGrou) → 
+                Data.List.map (λ {(inj₁ (c :-: (m , a))) → (inj₁ (c :-: (m , apply val c₀ c n sub a))) ; 
+                                  (inj₂ (c :-: (m , a))) → (inj₂ (c :-: (m , apply val c₀ c n sub a))) } ) grou ,
+                Data.List.map (applyMixedConstraint c₀ n sub) nonGrou) 
+              ((inj₂ x ∷ (catMaybes ∘ Data.List.map (getPermission c₀)) xs) , (acc , (catMaybes ∘ Data.List.map (getElse c₀)) xs)) in
+  groundSchedule (c₀ ∷ c) (newOtherGround ++ Data.List.map (generalizeGround c₀) gr) newOther
 
 -- Entry point for clp executions. Can be parameterized with conversion from CST to AST with convertProgram (for the program) and convertQuestion (for the question)
 -- An intercepter can be passed, in which the SLD-resolution can be adapted (for example co-SLD), and meta predicates can be executed.
@@ -186,8 +205,7 @@ clpExecute :
     then List ((Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint))
     else List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))))
 clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept true custom program question = 
-  let result = eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ 
-                (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
+  let result = intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
                 custom 
                 (convertProgram program) 
                 (convertQuestion question)
@@ -196,10 +214,9 @@ clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv �
   let payl = Data.List.map proj₂ result in
     Data.List.zip cust (
       Data.List.map (
-        Data.List.map (groundSchedule [])) payl)
+        Data.List.map (groundSchedule [] [])) payl)
 clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept false custom program question = 
-  eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ 
-                (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
+  intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
                 custom 
                 (convertProgram program) 
                 (convertQuestion question)

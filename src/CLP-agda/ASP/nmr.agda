@@ -4,8 +4,6 @@ open import CLP.types hiding (_>>=_)
 open import CLP.ftUtilsDerivation
 open import CLP.utilities
 open import ASP.types
-open import Views.find
-open import Views.findall
 open import Data.Bool hiding (_≟_)
 open import Data.String 
   using (String; _==_)
@@ -24,7 +22,13 @@ open import Function.Base
 open import Generics
 
 open import ASP.dual
-open import ASP.loops
+
+{-# TERMINATING #-}
+mod : ℕ → ℕ → ℕ
+mod n zero = n
+mod n m with compare n m
+... | less _ _ = n
+... | _ = mod (n ∸ m) m
 
 index : {A : Set} → ℕ → List A → Maybe A
 index _ [] = nothing
