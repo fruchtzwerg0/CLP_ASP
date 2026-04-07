@@ -219,7 +219,6 @@ library
       MAlonzo.Code.Effect.Functor
       MAlonzo.Code.Effect.Monad
       MAlonzo.Code.Empty.Qdomain
-      MAlonzo.Code.Examples.Qhanoi
       MAlonzo.Code.Examples.Qhanoi_without_asp
       MAlonzo.Code.Examples.QmyDomainGroup
       MAlonzo.Code.FD.Qdomain
@@ -281,6 +280,7 @@ library
       MAlonzo.Code.Induction.WellFounded
       MAlonzo.Code.Level
       MAlonzo.Code.List.Qdomain
+      MAlonzo.Code.Nat.Qdomain
       MAlonzo.Code.Product.Qdomain
       MAlonzo.Code.Reflection
       MAlonzo.Code.Reflection.AST
@@ -358,6 +358,7 @@ library
       MAlonzo.Code.Relation.Nullary.Reflects
       MAlonzo.Code.Relation.Unary
       MAlonzo.Code.Relation.Unary.Properties
+      MAlonzo.Code.String.Qdomain
       MAlonzo.Code.Sum.Qdomain
       MAlonzo.Code.Text.Format
       MAlonzo.Code.Text.Format.Generic

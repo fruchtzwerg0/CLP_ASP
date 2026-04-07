@@ -38,5 +38,5 @@ aspFormat :
 aspFormat {Atom}{C}{Code}{Constraint} showAtom ⦃ inst ⦄ ⦃ sho ⦄ ((_ , _ , chs , _ , justification) , (constraints ∷ _)) = 
   "CHS:\n" ++ (joinWith ", " ∘ 
               Data.List.map (λ x → functor x ++ " with: " ++ formatOutput true (collectVarsᵥ C Code Constraint (_<ᵢ x ⦃ inst ⦄)) constraints) ∘ filterᵇ showAtom) chs ++ 
-  "Justification:\n" ++ justification
+  "\nJustification:\n" ++ justification
 aspFormat _ _ = "unsat"

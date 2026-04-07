@@ -81,6 +81,9 @@ instance  aspUtils : ASPUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           aspUtils .toggle (fnot x) = x
           aspUtils .toggle x = fnot x
 
+instance showFunctor : Show Functor
+         showFunctor = deriveShow functorD
+
 -- These are general functions that we need in the generic CLP scheme.
 instance
   atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
@@ -88,52 +91,52 @@ instance
     zipMatch atomUtils x y
 
   atomUtils .zipMatch (node a) (node x) =
-    just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ [])
+    just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ [])
 
   atomUtils .zipMatch (reachable a) (reachable x) =
-    just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ [])
+    just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ [])
 
   atomUtils .zipMatch (cycle a b) (cycle x y) =
-    just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ [])
+    just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ (_:-:_ fd𝒞 (b =ℒ y)) ∷ [])
 
   atomUtils .zipMatch (edge a b) (edge x y) =
-    just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ [])
+    just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ (_:-:_ fd𝒞 (b =ℒ y)) ∷ [])
 
   atomUtils .zipMatch (other a b) (other x y) =
-    just ((_:-:_ FD𝒞 (a =ℒ x)) ∷ (_:-:_ FD𝒞 (b =ℒ y)) ∷ [])
+    just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ (_:-:_ fd𝒞 (b =ℒ y)) ∷ [])
 
   atomUtils .zipMatch (travelPath a b c) (travelPath x y z) =
     just (
-      (_:-:_ FD𝒞 (a =ℒ x)) ∷
-      (_:-:_ FD𝒞 (b =ℒ y)) ∷
-      (_:-:_ (list𝒞 (⊎𝒞 FD𝒞 (list𝒞 FD𝒞)))
+      (_:-:_ fd𝒞 (a =ℒ x)) ∷
+      (_:-:_ fd𝒞 (b =ℒ y)) ∷
+      (_:-:_ (list𝒞 (⊎𝒞 fd𝒞 (list𝒞 fd𝒞)))
              (c =ℒ z)
              ⦃ ftUtilsList ⦄ ⦃ ftUtils⊥ ⦄ ⦃ decList ⦄) ∷
       [])
 
   atomUtils .zipMatch (path a b c d p₁ p₂) (path w x y z q₁ q₂) =
     just (
-      (_:-:_ FD𝒞 (a =ℒ w)) ∷
-      (_:-:_ FD𝒞 (b =ℒ x)) ∷
-      (_:-:_ FD𝒞 (c =ℒ y)) ∷
-      (_:-:_ FD𝒞 (d =ℒ z)) ∷
-      (_:-:_ (list𝒞 (⊎𝒞 FD𝒞 (list𝒞 FD𝒞)))
+      (_:-:_ fd𝒞 (a =ℒ w)) ∷
+      (_:-:_ fd𝒞 (b =ℒ x)) ∷
+      (_:-:_ fd𝒞 (c =ℒ y)) ∷
+      (_:-:_ fd𝒞 (d =ℒ z)) ∷
+      (_:-:_ (list𝒞 (⊎𝒞 fd𝒞 (list𝒞 fd𝒞)))
              (p₁ =ℒ q₁)
              ⦃ ftUtilsList ⦄ ⦃ ftUtils⊥ ⦄ ⦃ decList ⦄) ∷
-      (_:-:_ (list𝒞 (⊎𝒞 FD𝒞 (list𝒞 FD𝒞)))
+      (_:-:_ (list𝒞 (⊎𝒞 fd𝒞 (list𝒞 fd𝒞)))
              (p₂ =ℒ q₂)
              ⦃ ftUtilsList ⦄ ⦃ ftUtils⊥ ⦄ ⦃ decList ⦄) ∷
       [])
 
   atomUtils .zipMatch (cycleDist a b c) (cycleDist x y z) =
-    just ((_:-:_ FD𝒞 (a =ℒ x)) ∷
-          (_:-:_ FD𝒞 (b =ℒ y)) ∷
-          (_:-:_ FD𝒞 (c =ℒ z)) ∷ [])
+    just ((_:-:_ fd𝒞 (a =ℒ x)) ∷
+          (_:-:_ fd𝒞 (b =ℒ y)) ∷
+          (_:-:_ fd𝒞 (c =ℒ z)) ∷ [])
 
   atomUtils .zipMatch (distance a b c) (distance x y z) =
-    just ((_:-:_ FD𝒞 (a =ℒ x)) ∷
-          (_:-:_ FD𝒞 (b =ℒ y)) ∷
-          (_:-:_ FD𝒞 (c =ℒ z)) ∷ [])
+    just ((_:-:_ fd𝒞 (a =ℒ x)) ∷
+          (_:-:_ fd𝒞 (b =ℒ y)) ∷
+          (_:-:_ fd𝒞 (c =ℒ z)) ∷ [])
 
   atomUtils .zipMatch ffalse ffalse = just []
   atomUtils .zipMatch _ _ = nothing
@@ -148,13 +151,13 @@ instance
       (λ a b → other (incrementFD n a) (incrementFD n b))
       (λ a b p → travelPath (incrementFD n a)
                             (incrementFD n b)
-                            (increment valueUtils (list𝒞 (⊎𝒞 FD𝒞 (list𝒞 FD𝒞))) n p))
+                            (increment valueUtils (list𝒞 (⊎𝒞 fd𝒞 (list𝒞 fd𝒞))) n p))
       (λ a b c d p₁ p₂ → path (incrementFD n a)
                               (incrementFD n b)
                               (incrementFD n c)
                               (incrementFD n d)
-                              (increment valueUtils (list𝒞 (⊎𝒞 FD𝒞 (list𝒞 FD𝒞))) n p₁)
-                              (increment valueUtils (list𝒞 (⊎𝒞 FD𝒞 (list𝒞 FD𝒞))) n p₂))
+                              (increment valueUtils (list𝒞 (⊎𝒞 fd𝒞 (list𝒞 fd𝒞))) n p₁)
+                              (increment valueUtils (list𝒞 (⊎𝒞 fd𝒞 (list𝒞 fd𝒞))) n p₂))
       (λ a b c → cycleDist (incrementFD n a)
                            (incrementFD n b)
                            (incrementFD n c))
@@ -181,13 +184,13 @@ module program where
       reachable U •ₐ
 
     W ← new
-    ffalse :- cycle U W ∧ₐ cycle V W ∧ₐ FD𝒞 ↣ U ≠ℒ V •
+    ffalse :- cycle U W ∧ₐ cycle V W ∧ₐ fd𝒞 ↣ U ≠ℒ V •
 
     cycle U V :-
       edge U V ∧ₐ not (other U V) •ₐ
     other U V :-
       node U ∧ₐ node V ∧ₐ node W ∧ₐ
-      edge U W ∧ₐ FD𝒞 ↣ V ≠ℒ W ∧ cycle U W •ₐ
+      edge U W ∧ₐ fd𝒞 ↣ V ≠ℒ W ∧ cycle U W •ₐ
     
     S ← new
     Ln ← new
@@ -206,8 +209,8 @@ module program where
     path A X Y D Ps ((p X) ∷ (q (D ∷ [])) ∷ (p Y) ∷ Ps) :-
       cycleDist X Y D •ₐ
     path S X Y D Ps Cs :-
-      FD𝒞 ↣ D =ℒ D1 ＃+ D2 ∧
-      cycleDist Z Y D1 ∧ₐ FD𝒞 ↣ Z ≠ℒ S ∧
+      fd𝒞 ↣ D =ℒ D1 ＃+ D2 ∧
+      cycleDist Z Y D1 ∧ₐ fd𝒞 ↣ Z ≠ℒ S ∧
       path S X Z D2 ((q (D1 ∷ [])) ∷ (p Y) ∷ Ps) Cs •ₐ
     
     edge X Y :- distance X Y D •ₐ
@@ -222,7 +225,7 @@ module program where
     distance (＃ (pos 1)) (＃ (pos 2)) (＃ (pos 3)) •
     L ← new
     distance (＃ (pos 2)) (＃ (pos 3)) L :-
-      FD𝒞 ↪ L ＃≥ (＃ (pos 8)) ∧ FD𝒞 ↪ L ＃< (＃ (pos 10)) •
+      fd𝒞 ↪ L ＃≥ (＃ (pos 8)) ∧ fd𝒞 ↪ L ＃< (＃ (pos 10)) •
     distance (＃ (pos 3)) (＃ (pos 0)) (＃ (pos 1)) •
     distance (＃ (pos 0)) (＃ (pos 1)) (＃ (pos 1)) •
     distance (＃ (pos 0)) (＃ (pos 3)) (＃ (pos 1)) •
@@ -232,7 +235,7 @@ module program where
   question :
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question = 
-    FD𝒞 ↪ (varFD 0) ＃< (＃ (pos 10)) ∧ travelPath (＃ (pos 1)) (varFD 0) (varList 1) •ₐ
+    fd𝒞 ↪ (varFD 0) ＃< (＃ (pos 10)) ∧ travelPath (＃ (pos 1)) (varFD 0) (varList 1) •ₐ
     
   realTravel = (toIntern ∘ proj₂ ∘ applyVars travelingSalesma) 0
 
@@ -246,7 +249,7 @@ module program where
         atom (node (varFD 1)) ∷
         atom (node (varFD 2)) ∷
         atom (edge (varFD 0) (varFD 2)) ∷
-        constraint (inj₁ (FD𝒞 :-: (varFD 1 ≠ℒ varFD 2))) ∷
+        constraint (inj₁ (fd𝒞 :-: (varFD 1 ≠ℒ varFD 2))) ∷
         atom (cycle (varFD 0) (varFD 2)) ∷ []))
         ∷ [])
   adj = getAdjacent ((cycle (varFD 0) (varFD 1) :--
@@ -258,7 +261,13 @@ module program where
         atom (node (varFD 1)) ∷
         atom (node (varFD 2)) ∷
         atom (edge (varFD 0) (varFD 2)) ∷
-        constraint (inj₁ (FD𝒞 :-: (varFD 1 ≠ℒ varFD 2))) ∷
+        constraint (inj₁ (fd𝒞 :-: (varFD 1 ≠ℒ varFD 2))) ∷
         atom (cycle (varFD 0) (varFD 2)) ∷ []))
         ∷ []) (cycle (varFD 0) (varFD 1) , 0)
   getOlon = findOLON realTravel
+  
+  execute = (take 1 ∘ aspExecute travelingSalesma question) (λ { (wrap (travelPath _ _ _) _ _) → true ; _ → false })
+
+  
+  {-# COMPILE GHC execute as execute #-}
+  

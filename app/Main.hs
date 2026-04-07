@@ -2,14 +2,13 @@
 
 module Main (main) where
 
-
-import MAlonzo.Code.Examples.Qhanoi
+import MAlonzo.Code.Examples.Qhanoi_without_asp
 import FDSolver
 import Data.Text (pack, unpack)
 
 main :: IO ()
 main = do
-  print execute
+  mapM_ (mapM_ (putStrLn . unpack)) execute
 
 {-
 main :: IO ()
