@@ -203,10 +203,10 @@ instance  valueUtils : ValueUtils My𝒞 ⟦_⟧ ⟦_⟧ℒ
 -- FD has its own solver. Here, it needs to be converted back to the general dependent type.
 instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
           solver .solve bool𝒞 = unifyDisunify bool𝒞 ⦃ decMy𝒞 ⦄ ⦃ ftUtilsBool ⦄ ⦃ valueUtils ⦄ ⦃ ftUtils⊥ ⦄ ⦃ constraintUtils ⦄ ⦃ decBool ⦄ ⦃ makeVarBool ⦄ ⦃ showBool ⦄ ⦃ mapShowConstraint bool𝒞 ⦄
-          solver .solve fd𝒞 _ _ (constraints , y) = 
+          solver .solve fd𝒞 _ _ constraints new y = 
             (Data.List.map (λ x → (x , y)) ∘ Data.List.map (Data.List.map 
               (λ {(inj₁ x) → inj₁ (generalize fd𝒞 ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄ x) ; 
-                  (inj₂ x) → inj₂ (generalizeCustom fd𝒞 ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄ x)})) ∘ fdSolve) constraints
+                  (inj₂ x) → inj₂ (generalizeCustom fd𝒞 ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄ x)})) ∘ fdSolve) (new ++ constraints)
           solver .solve (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq (⊎𝒞 c₀ c₁) ⦄ ⦃ mapMakeVar (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShow (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (⊎𝒞 c₀ c₁) ⦄
           solver .solve (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq (×𝒞 c₀ c₁) ⦄ ⦃ mapMakeVar (×𝒞 c₀ c₁) ⦄ ⦃ mapShow (×𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (×𝒞 c₀ c₁) ⦄
           solver .solve (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq (list𝒞 c) ⦄ ⦃ mapMakeVar (list𝒞 c) ⦄ ⦃ mapShow (list𝒞 c) ⦄ ⦃ mapShowConstraint (list𝒞 c) ⦄
@@ -215,14 +215,42 @@ instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
 
 -- Here, for every domain a grounder can be added. This only returns some ground variable assignments for which the constraints hold
 instance  grounder : Grounder My𝒞 ⟦_⟧ ⟦_⟧ℒ
-          grounder .ground bool𝒞 ap oc (x , other) = toVariableViews bool𝒞 ⦃ decMy𝒞 ⦄ ⦃ ftUtilsBool ⦄ ⦃ valueUtils ⦄ ⦃ ftUtils⊥ ⦄ ⦃ constraintUtils ⦄ ⦃ decBool ⦄ ⦃ makeVarBool ⦄ ⦃ showBool ⦄ ⦃ mapShowConstraint bool𝒞 ⦄ x , other
+          grounder .ground bool𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = groundImpl bool𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄
           grounder .ground fd𝒞 = labeling
-          grounder .ground (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc (x , other) = toVariableViews (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec⊎ ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShow (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (⊎𝒞 c₀ c₁) ⦄ x , other
-          grounder .ground (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc (x , other) = toVariableViews (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec× ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (×𝒞 c₀ c₁) ⦄ ⦃ mapShow (×𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (×𝒞 c₀ c₁) ⦄ x , other
-          grounder .ground (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc (x , other) = toVariableViews (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decList ⦃ mapDecEq c ⦄ ⦄ ⦃ mapMakeVar (list𝒞 c) ⦄ ⦃ mapShow (list𝒞 c) ⦄ ⦃ mapShowConstraint (list𝒞 c) ⦄ x , other
-          grounder .ground nat𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc (x , other) = toVariableViews nat𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decNat ⦄ ⦃ mapMakeVar nat𝒞 ⦄ ⦃ mapShow nat𝒞 ⦄ ⦃ mapShowConstraint nat𝒞 ⦄ x , other
-          grounder .ground string𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc (x , other) = toVariableViews string𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decString ⦄ ⦃ mapMakeVar string𝒞 ⦄ ⦃ mapShow string𝒞 ⦄ ⦃ mapShowConstraint string𝒞 ⦄ x , other
+          grounder .ground (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = groundImpl (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec⊎ ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShow (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (⊎𝒞 c₀ c₁) ⦄
+          grounder .ground (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = groundImpl (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec× ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (×𝒞 c₀ c₁) ⦄ ⦃ mapShow (×𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (×𝒞 c₀ c₁) ⦄
+          grounder .ground (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = groundImpl (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decList ⦃ mapDecEq c ⦄ ⦄ ⦃ mapMakeVar (list𝒞 c) ⦄ ⦃ mapShow (list𝒞 c) ⦄ ⦃ mapShowConstraint (list𝒞 c) ⦄
+          grounder .ground nat𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = groundImpl nat𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decNat ⦄ ⦃ mapMakeVar nat𝒞 ⦄ ⦃ mapShow nat𝒞 ⦄ ⦃ mapShowConstraint nat𝒞 ⦄
+          grounder .ground string𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = groundImpl string𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decString ⦄ ⦃ mapMakeVar string𝒞 ⦄ ⦃ mapShow string𝒞 ⦄ ⦃ mapShowConstraint string𝒞 ⦄
 
+{-
+-- Here, we can use pattern matching to map domains to solvers. 
+-- unifyDisunify is part of the abstract CLP scheme, and domain-agnostic.
+-- Therefore it can be used for any domain and acts as a catch-all when we don't have any domain specific solver, 
+-- and if we don't have a custom constraint domain.
+-- FD has its own solver. Here, it needs to be converted back to the general dependent type.
+instance  solver : Solver My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          solver .solve bool𝒞 = unifyDisunify bool𝒞 ⦃ decMy𝒞 ⦄ ⦃ ftUtilsBool ⦄ ⦃ valueUtils ⦄ ⦃ ftUtils⊥ ⦄ ⦃ constraintUtils ⦄ ⦃ decBool ⦄ ⦃ makeVarBool ⦄ ⦃ showBool ⦄ ⦃ mapShowConstraint bool𝒞 ⦄
+          solver .solve fd𝒞 _ _ constraints new y = 
+            (Data.List.map (λ x → (x , y)) ∘ Data.List.map (Data.List.map 
+              (λ {(inj₁ x) → inj₁ (generalize fd𝒞 ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄ x) ; 
+                  (inj₂ x) → inj₂ (generalizeCustom fd𝒞 ⦃ ftUtilsFD ⦄ ⦃ ftUtilsℒFD ⦄ ⦃ decFD ⦄ x)})) ∘ fdSolve) (new ++ constraints)
+          solver .solve (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq (⊎𝒞 c₀ c₁) ⦄ ⦃ mapMakeVar (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShow (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (⊎𝒞 c₀ c₁) ⦄
+          solver .solve (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq (×𝒞 c₀ c₁) ⦄ ⦃ mapMakeVar (×𝒞 c₀ c₁) ⦄ ⦃ mapShow (×𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (×𝒞 c₀ c₁) ⦄
+          solver .solve (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq (list𝒞 c) ⦄ ⦃ mapMakeVar (list𝒞 c) ⦄ ⦃ mapShow (list𝒞 c) ⦄ ⦃ mapShowConstraint (list𝒞 c) ⦄
+          solver .solve nat𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify nat𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq nat𝒞 ⦄ ⦃ mapMakeVar nat𝒞 ⦄ ⦃ mapShow nat𝒞 ⦄ ⦃ mapShowConstraint nat𝒞 ⦄
+          solver .solve string𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ = unifyDisunify string𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ mapDecEq string𝒞 ⦄ ⦃ mapMakeVar string𝒞 ⦄ ⦃ mapShow string𝒞 ⦄ ⦃ mapShowConstraint string𝒞 ⦄
+
+-- Here, for every domain a grounder can be added. This only returns some ground variable assignments for which the constraints hold
+instance  grounder : Grounder My𝒞 ⟦_⟧ ⟦_⟧ℒ
+          grounder .ground bool𝒞 ap oc x other = toVariableViews bool𝒞 ⦃ decMy𝒞 ⦄ ⦃ ftUtilsBool ⦄ ⦃ valueUtils ⦄ ⦃ ftUtils⊥ ⦄ ⦃ constraintUtils ⦄ ⦃ decBool ⦄ ⦃ makeVarBool ⦄ ⦃ showBool ⦄ ⦃ mapShowConstraint bool𝒞 ⦄ x , other
+          grounder .ground fd𝒞 = labeling
+          grounder .ground (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc x other = toVariableViews (⊎𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec⊎ ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShow (⊎𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (⊎𝒞 c₀ c₁) ⦄ x , other
+          grounder .ground (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc x other = toVariableViews (×𝒞 c₀ c₁) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ dec× ⦃ mapDecEq c₀ ⦄ ⦃ mapDecEq c₁ ⦄ ⦄ ⦃ mapMakeVar (×𝒞 c₀ c₁) ⦄ ⦃ mapShow (×𝒞 c₀ c₁) ⦄ ⦃ mapShowConstraint (×𝒞 c₀ c₁) ⦄ x , other
+          grounder .ground (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc x other = toVariableViews (list𝒞 c) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decList ⦃ mapDecEq c ⦄ ⦄ ⦃ mapMakeVar (list𝒞 c) ⦄ ⦃ mapShow (list𝒞 c) ⦄ ⦃ mapShowConstraint (list𝒞 c) ⦄ x , other
+          grounder .ground nat𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc x other = toVariableViews nat𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decNat ⦄ ⦃ mapMakeVar nat𝒞 ⦄ ⦃ mapShow nat𝒞 ⦄ ⦃ mapShowConstraint nat𝒞 ⦄ x , other
+          grounder .ground string𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ap oc x other = toVariableViews string𝒞 ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ e ⦄ ⦃ f ⦄ ⦃ decString ⦄ ⦃ mapMakeVar string𝒞 ⦄ ⦃ mapShow string𝒞 ⦄ ⦃ mapShowConstraint string𝒞 ⦄ x , other
+-}
 -- It is not recommended to modify the scheduler, defaultSchedule is perfectly safe and usable for any domain group.
 instance  scheduler : Scheduler My𝒞 ⟦_⟧ ⟦_⟧ℒ
           scheduler .schedule = defaultSchedule ⦃ decMy𝒞 ⦄ ⦃ valueUtils ⦄ ⦃ constraintUtils ⦄ ⦃ solver ⦄

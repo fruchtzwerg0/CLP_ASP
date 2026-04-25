@@ -187,11 +187,9 @@ existentialVars (_:--_ hea bod ⦃ ft ⦄ ⦃ at ⦄) =
     ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom ⦃ ft ⦄ ⦃ at ⦄) hea)
 
 negateConstraint : 
-  {Atom : Set}
-  → {𝒞 : Set}
+  {𝒞 : Set}
   → {Code : (𝒞 → Set)}
   → {Constraint : (𝒞 → Set)}
-  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
   → (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 negateConstraint (inj₁ (c₁ :-: (l =ℒ r))) = inj₁ (c₁ :-: (l ≠ℒ r))

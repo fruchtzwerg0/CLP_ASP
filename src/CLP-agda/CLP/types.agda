@@ -81,6 +81,7 @@ record AtomUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint :
   field
     zipMatch : Atom → Atom → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
     increment : ℕ → Atom → Atom
+    apply : (c : 𝒞) → ℕ → Code c → Atom → Atom
 open AtomUtils ⦃...⦄ public
 
 record _×ᵢ_ (A : Set) (B : Set) : Set where
@@ -204,7 +205,9 @@ record Solver (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set))
      → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
      → (occurs : ℕ → A → Bool)
      → (apply : ℕ → Code c → A → A)
-     → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c) × A
+     → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
+     → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
+     → A
      → List (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint) × A)
 open Solver ⦃...⦄ public
 
@@ -220,7 +223,8 @@ record Grounder (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set
      → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
      → (occurs : ℕ → A → Bool)
      → (apply : ℕ → Code c → A → A)
-     → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c) × A
+     → List ((ℒ ∘ Code) c ⊎ (Dual ∘ Constraint) c)
+     → A
      → List ((ℕ × Code c) ⊎ (ℕ × Code c)) × A
 open Grounder ⦃...⦄ public
 
@@ -231,6 +235,7 @@ record Scheduler (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Se
      → ⦃ ValueUtils 𝒞 Code Constraint ⦄
      → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
      → ⦃ Solver 𝒞 Code Constraint ⦄
+     → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
      → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
      → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 open Scheduler ⦃...⦄ public

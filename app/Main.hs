@@ -2,13 +2,14 @@
 
 module Main (main) where
 
-import MAlonzo.Code.Examples.Qhanoi_without_asp
+import MAlonzo.Code.Examples.QtravelingSalesman
 import FDSolver
 import Data.Text (pack, unpack)
 
 main :: IO ()
 main = do
-  mapM_ (mapM_ (putStrLn . unpack)) execute
+  mapM_ ((putStrLn . unpack)) execute
+  --print cforallTest
 
 {-
 main :: IO ()

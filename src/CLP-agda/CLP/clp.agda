@@ -28,7 +28,38 @@ open import CLP.outputFormatter
 maybeToList : {A : Set} → Maybe (List A) → List A
 maybeToList nothing  = []
 maybeToList (just x) = x
+{-
+applyToBody : 
+  {Atom : Set}
+  → {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
+  → Literal Atom 𝒞 Code Constraint
+  → Literal Atom 𝒞 Code Constraint
+applyToBody ((_:-:_ c (x =ℒ y)) ∷ varBindings) (constraint l) with varName y
+... | just z = applyToBody varBindings (constraint (applyMixedConstraint c z y l))
+... | nothing = applyToBody varBindings (constraint l)
+applyToBody ((_:-:_ c (x ≠ℒ y)) ∷ varBindings) (constraint l) with varName y
+... | just z = applyToBody varBindings (constraint (applyMixedConstraint c z y l))
+... | nothing = applyToBody varBindings (constraint l)
+applyToBody ((_:-:_ c (x =ℒ y)) ∷ varBindings) (atom ⦃ ft ⦄ ⦃ at ⦄ l) with varName y
+... | just z = applyToBody varBindings (atom (apply at c z y l))
+... | nothing = applyToBody varBindings (atom l)
+applyToBody ((_:-:_ c (x ≠ℒ y)) ∷ varBindings) (atom ⦃ ft ⦄ ⦃ at ⦄ l) with varName y
+... | just z = applyToBody varBindings (atom (apply at c z y l))
+... | nothing = applyToBody varBindings (atom l)
+applyToBody [] = id
 
+decToBool : ∀ {ℓ} {P : Set ℓ} → Dec P → Bool
+decToBool (yes _) = true
+decToBool (no  _) = false
+
+isValid : Maybe Bool → Bool
+isValid nothing = false
+isValid (just x) = x
 
 bindAndRename : 
   {Atom : Set}
@@ -42,7 +73,31 @@ bindAndRename :
   → ℕ 
   → ClauseI Atom 𝒞 Code Constraint 
   → List (Literal Atom 𝒞 Code Constraint)
-bindAndRename {Atom}{C}{Code}{Constraint} ⦃ ft ⦄ atom₀ n (atom₁ :-- l)  =
+bindAndRename {Atom}{C}{Code}{Constraint} ⦃ ft ⦄ atom₀ n (atom₁ :-- l) with zipMatch ft atom₀ (increment ft (suc n) atom₁)
+... | nothing = []
+... | (just newBindings) = 
+  let cleanBindings = filterᵇ (λ { (_:-:_ c (x =ℒ y)) → (not ∘ decToBool) (x ≟ y) ; (_:-:_ c (x ≠ℒ y)) → (not ∘ decToBool) (x ≟ y) }) newBindings in
+  let (varBindings , otherBindings) = 
+          (partitionᵇ (λ {(_:-:_ c (x =ℒ y)) → isValid (varName y Data.Maybe.>>= (λ z → (just ∘ _≡ᵇ_ 1 ∘ length ∘ filterᵇ (_≡ᵇ_ z) ∘ collectVarsᵥ {listOf genericConstraint} {Atom} C Code Constraint) cleanBindings)) ; 
+                          (_:-:_ c (x ≠ℒ y)) → isValid (varName y Data.Maybe.>>= (λ z → (just ∘ _≡ᵇ_ 1 ∘ length ∘ filterᵇ (_≡ᵇ_ z) ∘ collectVarsᵥ {listOf genericConstraint} {Atom} C Code Constraint) cleanBindings)) }) cleanBindings) in
+  (Data.List.map (constraint ∘ inj₁)) otherBindings
+   ++ (Data.List.map 
+        (applyToBody varBindings)
+           ∘ Data.List.map (incrementLiteral (suc n))) l
+-}
+bindAndRename : 
+  {Atom : Set}
+  → {𝒞 : Set}
+  → {Code : (𝒞 → Set)}
+  → {Constraint : (𝒞 → Set)}
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → Atom 
+  → ℕ 
+  → ClauseI Atom 𝒞 Code Constraint 
+  → List (Literal Atom 𝒞 Code Constraint)
+bindAndRename {Atom}{C}{Code}{Constraint} ⦃ ft ⦄ atom₀ n (atom₁ :-- l) =
   ((Data.List.map (constraint ∘ inj₁)) ∘ maybeToList ∘ (zipMatch ft atom₀)) (increment ft (suc n) atom₁) 
    ++ Data.List.map (incrementLiteral (suc n)) l
 
@@ -114,8 +169,8 @@ eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ 
           right))
       split
 
-eval intercept custom program (constraint cnstr ∷ left) right with 
-  (schedule ∘ Data.List.map (λ x → (_++_ x ∘ catMaybes ∘ takeWhile is-just ∘ Data.List.map (λ { (constraint x) → just x ; (atom _) → nothing })) (constraint cnstr ∷ left))) right
+eval intercept custom program goals@(constraint cnstr ∷ left) right with 
+  schedule ((catMaybes ∘ takeWhile is-just ∘ Data.List.map (λ { (constraint x) → just x ; (atom _) → nothing })) goals) right
 eval intercept custom program (constraint cnstr ∷ left) right | [] = []
 eval intercept custom program (constraint cnstr ∷ left) right | newConstraints = 
   intercept custom program (dropWhile (λ { (constraint _) → true ; (atom _) → false }) left) newConstraints
@@ -156,7 +211,8 @@ groundSchedule {C}{Code}{Constraint} ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ val ⦄ c
                 Data.List.map (λ {(inj₁ (c :-: (m , a))) → (inj₁ (c :-: (m , apply val c₀ c n sub a))) ; 
                                   (inj₂ (c :-: (m , a))) → (inj₂ (c :-: (m , apply val c₀ c n sub a))) } ) grou ,
                 Data.List.map (applyMixedConstraint c₀ n sub) nonGrou) 
-              ((inj₁ x ∷ (catMaybes ∘ Data.List.map (getPermission c₀)) xs) , (acc , (catMaybes ∘ Data.List.map (getElse c₀)) xs)) in
+              (inj₁ x ∷ (catMaybes ∘ Data.List.map (getPermission c₀)) xs)
+              (acc , (catMaybes ∘ Data.List.map (getElse c₀)) xs) in
   groundSchedule (c₀ ∷ c) (newOtherGround ++ Data.List.map (generalizeGround c₀) gr) newOther
 groundSchedule {C}{Code}{Constraint} ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ val ⦄ c acc ((inj₂ (c₀ :-: x)) ∷ xs) = 
   let (gr , (newOtherGround , newOther)) = ground 
@@ -168,7 +224,8 @@ groundSchedule {C}{Code}{Constraint} ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ val ⦄ c
                 Data.List.map (λ {(inj₁ (c :-: (m , a))) → (inj₁ (c :-: (m , apply val c₀ c n sub a))) ; 
                                   (inj₂ (c :-: (m , a))) → (inj₂ (c :-: (m , apply val c₀ c n sub a))) } ) grou ,
                 Data.List.map (applyMixedConstraint c₀ n sub) nonGrou) 
-              ((inj₂ x ∷ (catMaybes ∘ Data.List.map (getPermission c₀)) xs) , (acc , (catMaybes ∘ Data.List.map (getElse c₀)) xs)) in
+              (inj₂ x ∷ (catMaybes ∘ Data.List.map (getPermission c₀)) xs)
+              (acc , (catMaybes ∘ Data.List.map (getElse c₀)) xs) in
   groundSchedule (c₀ ∷ c) (newOtherGround ++ Data.List.map (generalizeGround c₀) gr) newOther
 
 -- Entry point for clp executions. Can be parameterized with conversion from CST to AST with convertProgram (for the program) and convertQuestion (for the question)

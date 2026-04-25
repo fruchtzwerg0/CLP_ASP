@@ -152,9 +152,10 @@ labeling :
   {A : Set}
   → (occurs : ℕ → A → Bool)
   → (apply : ℕ → FD → A → A)
-  → List (ℒ FD ⊎ Dual ℒFD) × A
+  → List (ℒ FD ⊎ Dual ℒFD)
+  → A
   → List ((ℕ × FD) ⊎ (ℕ × FD)) × A
-labeling oc ap (constraints , a) =
+labeling oc ap constraints a =
   (foldr (λ (MkBinding va vl) (acc , as) → inj₁ (va , ＃ vl) ∷ acc , ap va (＃ vl) as) ([] , a)
   ∘ maybeToList ∘ labelingPure
   ∘ Data.List.map toConstraint) constraints

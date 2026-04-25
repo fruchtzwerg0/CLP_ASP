@@ -100,7 +100,7 @@ module program where
     ⦃ AtomUtils (Functor StringLogic) My𝒞 ⟦_⟧ ⟦_⟧ℒ ⦄ →
     Clause (Functor StringLogic) validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
   hanoiProgram = do
-    appendProgram string𝒞
+    appendProgram fd𝒞
 
     A ← new
     B ← new
@@ -131,14 +131,68 @@ module program where
     ⦃ AtomUtils (Functor StringLogic) My𝒞 ⟦_⟧ ⟦_⟧ℒ ⦄ →
     Body (Functor StringLogic) (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question = 
-    hanoiMoves (＃ (pos 4)) (varList 0) •ₐ
-    --append (varList 0) (varList 1) ((＃ (pos 2) ∶ ＃ (pos 1)) ∷ []) •ₐ
-{-
-  unifyTest1 = unifyDisunify (list𝒞 (×𝒞 string𝒞 string𝒞))
-                (inj₁ (varList 1 =ℒ ((＃ (pos 2) ∶ ＃ (pos 1)) ∷ varList 0)) ∷ 
-                 inj₁ ([] =ℒ (varList 0)) ∷ 
-                 inj₁ ([] =ℒ (varList 0)) ∷ [])
+    hanoiMoves (＃ (pos 3)) (varList 0) •ₐ
+    --append (varList 0) (varList 1) ((~ "a") ∶ (~ "b") ∷ []) •ₐ
   
+  unifyTest1 = unifyDisunify
+    (list𝒞 (×𝒞 string𝒞 string𝒞))
+    (λ _ _ → false)       -- occurs on ⊤ or whatever
+    (λ _ _ x → x)         -- apply no-op
+    []                     -- normalized (empty)
+    (inj₁ (varList 1 =ℒ (((~ "a") ∶ (~ "b")) ∷ varList 0)) ∷
+    inj₁ ([] =ℒ (varList 0)) ∷
+    inj₁ ([] =ℒ (varList 0)) ∷
+    [])
+    tt
+  testBase = unifyDisunify
+    (list𝒞 (×𝒞 string𝒞 string𝒞))
+    (λ _ _ → false) (λ _ _ x → x)
+    []
+    (inj₁ ([] =ℒ varList 0) ∷
+    inj₁ (varList 10 =ℒ varList 1) ∷
+    inj₁ (varList 10 =ℒ (((~ "a") ∶ (~ "b")) ∷ [])) ∷ [])
+    tt
+  test2a = unifyDisunify
+    (list𝒞 (×𝒞 string𝒞 string𝒞))
+    (λ _ _ → false) (λ _ _ x → x)
+    []
+    (inj₁ ([] =ℒ varList 0) ∷ [])
+    tt
+
+  -- take the first branch's first component, wrap back into the input form
+  -- (you'll need a helper; or just paste test2a's output directly)
+
+  test2b = unifyDisunify
+    (list𝒞 (×𝒞 string𝒞 string𝒞))
+    (λ _ _ → false) (λ _ _ x → x)
+    (inj₁ (varList 0 =ℒ []) ∷ [])    -- the serialized form of test2a's result
+    (inj₁ (varList 1 =ℒ (((~ "a") ∶ (~ "b")) ∷ varList 0)) ∷ [])
+    tt
+  testBaseClause = defaultSchedule
+    ((inj₁ (list𝒞 (×𝒞 string𝒞 string𝒞) :-: (varList 0 =ℒ []))) ∷
+    (inj₁ (list𝒞 (×𝒞 string𝒞 string𝒞) :-: (varList 1 =ℒ varList 100))) ∷
+    (inj₁ (list𝒞 (×𝒞 string𝒞 string𝒞) :-: ((((~ "a") ∶ (~ "b")) ∷ []) =ℒ varList 100))) ∷
+    [])
+    ([] ∷ [])
+  callC = unifyDisunify
+    (list𝒞 (×𝒞 string𝒞 string𝒞))
+    (λ _ _ → false) (λ _ _ x → x)
+    []
+    (inj₁ ([] =ℒ []) ∷
+    inj₁ (varList 0 =ℒ varList 100) ∷
+    inj₁ (varList 0 =ℒ varList 100) ∷ [])
+    tt
+  
+  callD = unifyDisunify
+    (list𝒞 (×𝒞 string𝒞 string𝒞))
+    (λ _ _ → false) (λ _ _ x → x)
+    []
+    (inj₁ ((var× 0 ∷ varList 1) =ℒ (var× 100 ∷ varList 101)) ∷
+    inj₁ (varList 2 =ℒ varList 102) ∷
+    inj₁ ((var× 0 ∷ varList 3) =ℒ varList 103) ∷ [])
+    tt
+  
+{-
   unifyTestAppend =
     unifyDisunify (list𝒞 (×𝒞 string𝒞 string𝒞))
       ( inj₁ (varList 3 =ℒ []) ∷ 
@@ -152,7 +206,6 @@ module program where
     unifyDisunify (×𝒞 fd𝒞 fd𝒞)
       ( inj₁ (var× 2 =ℒ (＃ (pos 2) ∶ ＃ (pos 1))) ∷ 
         [] )
-        -}
   bindAndRenameTest = bindAndRename ⦃ atomUtils fd𝒞 ⦄
                         (append ((＃ (pos 2) ∶ ＃ (pos 1)) ∷ []) (varList 1) ((＃ (pos 2) ∶ ＃ (pos 1)) ∷ varList 0))
                         1
@@ -197,6 +250,7 @@ module program where
   formatOutputTest1 = Data.List.map (formatOutput false (0 ∷ [])) scheduleTest1
 
   occursTest1 = occursConstraint My𝒞 (list𝒞 fd𝒞) ⟦_⟧ 0 ((varList 0) =ℒ [])
+          -}
   -- (maybe′ (maybe′ id "") "") 
   execute : (List ∘ List) String
   execute = (take 1 ∘ 

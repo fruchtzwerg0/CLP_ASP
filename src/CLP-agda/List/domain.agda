@@ -87,5 +87,6 @@ zipMatchList c (a ∷ b) (x ∷ y) = just ((_:-:_ c (a =ℒ x)) ∷ [] , (b =ℒ
 zipMatchList _ [] [] = just ([] , [])
 zipMatchList _ _ _ = nothing
 
+{-# TERMINATING #-}
 incrementList : ∀ {A} → (ℕ → A → A) → ℕ → ListLogic A → ListLogic A
 incrementList inc x = foldList [] (λ a b → inc x a ∷ b) (λ y → varList (x + y))

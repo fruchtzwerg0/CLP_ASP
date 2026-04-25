@@ -30,3 +30,11 @@ record ASPUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : 
     not : Atom → Atom
     toggle : Atom → Atom
 open ASPUtils ⦃...⦄ public
+
+data Modifier : Set where
+  chsMod : Modifier
+  provenMod : Modifier
+  noneMod : Modifier
+
+data Tree (A : Set) : Set where
+  node : A → List (Tree A) → Tree A

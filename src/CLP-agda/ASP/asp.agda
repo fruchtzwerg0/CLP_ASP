@@ -67,6 +67,6 @@ aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃
     (addNMR ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄)
     (interceptASP ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
     true
-    (as , sho ,  [] , [] , "") 
+    (as , [] , [] , []) 
     internProgram) 
     internGoal

@@ -153,7 +153,7 @@ buildQuery store varIds mode =
   let constraints = intercalate ", " (map renderConstraint store)
       varNames    = map varName varIds
       varList     = "[" ++ intercalate "," varNames ++ "]"
-      domainGoal  = varList ++ " ins -1000000..1000000"
+      domainGoal  = varList ++ " ins -100..100"
       labelGoal   = "label(" ++ varList ++ ")"
       printGoals  = intercalate ", " (map printGoal varNames)
       printGoal v = "format('~w=~w~n', ['" ++ v ++ "', " ++ v ++ "])"

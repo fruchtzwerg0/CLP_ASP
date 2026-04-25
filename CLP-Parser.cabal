@@ -115,6 +115,7 @@ library
       MAlonzo.Code.Data.Char
       MAlonzo.Code.Data.Char.Base
       MAlonzo.Code.Data.Char.Properties
+      MAlonzo.Code.Data.DifferenceList
       MAlonzo.Code.Data.Digit
       MAlonzo.Code.Data.Empty
       MAlonzo.Code.Data.Empty.Irrelevant
@@ -201,6 +202,12 @@ library
       MAlonzo.Code.Data.Sum.Relation.Binary.Pointwise
       MAlonzo.Code.Data.These
       MAlonzo.Code.Data.These.Base
+      MAlonzo.Code.Data.Tree.AVL
+      MAlonzo.Code.Data.Tree.AVL.Height
+      MAlonzo.Code.Data.Tree.AVL.Indexed
+      MAlonzo.Code.Data.Tree.AVL.Key
+      MAlonzo.Code.Data.Tree.AVL.Map
+      MAlonzo.Code.Data.Tree.AVL.Value
       MAlonzo.Code.Data.Unit
       MAlonzo.Code.Data.Unit.Base
       MAlonzo.Code.Data.Unit.Polymorphic
@@ -219,8 +226,9 @@ library
       MAlonzo.Code.Effect.Functor
       MAlonzo.Code.Effect.Monad
       MAlonzo.Code.Empty.Qdomain
-      MAlonzo.Code.Examples.Qhanoi_without_asp
+      MAlonzo.Code.Examples.Qhanoi
       MAlonzo.Code.Examples.QmyDomainGroup
+      MAlonzo.Code.Examples.QtravelingSalesman
       MAlonzo.Code.FD.Qdomain
       MAlonzo.Code.FD.Qsolver
       MAlonzo.Code.Function
@@ -307,6 +315,16 @@ library
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
       MAlonzo.Code.Relation.Binary.Consequences
+      MAlonzo.Code.Relation.Binary.Construct.Add.Extrema.Equality
+      MAlonzo.Code.Relation.Binary.Construct.Add.Extrema.NonStrict
+      MAlonzo.Code.Relation.Binary.Construct.Add.Extrema.Strict
+      MAlonzo.Code.Relation.Binary.Construct.Add.Infimum.Equality
+      MAlonzo.Code.Relation.Binary.Construct.Add.Infimum.NonStrict
+      MAlonzo.Code.Relation.Binary.Construct.Add.Infimum.Strict
+      MAlonzo.Code.Relation.Binary.Construct.Add.Point.Equality
+      MAlonzo.Code.Relation.Binary.Construct.Add.Supremum.Equality
+      MAlonzo.Code.Relation.Binary.Construct.Add.Supremum.NonStrict
+      MAlonzo.Code.Relation.Binary.Construct.Add.Supremum.Strict
       MAlonzo.Code.Relation.Binary.Construct.Closure.Reflexive
       MAlonzo.Code.Relation.Binary.Construct.Closure.Reflexive.Properties
       MAlonzo.Code.Relation.Binary.Construct.Constant.Core
@@ -350,6 +368,10 @@ library
       MAlonzo.Code.Relation.Binary.Structures
       MAlonzo.Code.Relation.Binary.Structures.Biased
       MAlonzo.Code.Relation.Nullary
+      MAlonzo.Code.Relation.Nullary.Construct.Add.Extrema
+      MAlonzo.Code.Relation.Nullary.Construct.Add.Infimum
+      MAlonzo.Code.Relation.Nullary.Construct.Add.Point
+      MAlonzo.Code.Relation.Nullary.Construct.Add.Supremum
       MAlonzo.Code.Relation.Nullary.Decidable
       MAlonzo.Code.Relation.Nullary.Decidable.Core
       MAlonzo.Code.Relation.Nullary.Indexed
@@ -364,8 +386,6 @@ library
       MAlonzo.Code.Text.Format.Generic
       MAlonzo.Code.Text.Printf
       MAlonzo.Code.Text.Printf.Generic
-      MAlonzo.Code.Views.Qfind
-      MAlonzo.Code.Views.Qfindall
       MAlonzo.RTE
       MAlonzo.RTE.Float
   other-modules:

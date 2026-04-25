@@ -45,22 +45,25 @@ defaultSchedule₀ :
   → ⦃ Solver 𝒞 Code Constraint ⦄
   → List (Σᵢ 𝒞 (λ _ → ⊤) Code Constraint)
   → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
+  → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
-defaultSchedule₀ {C}{Code}{Constraint} ⦃ dec ⦄ ⦃ val ⦄ ⦃ cns ⦄ ((_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) ∷ xs) unifications = 
+defaultSchedule₀ {C}{Code}{Constraint} ⦃ dec ⦄ ⦃ val ⦄ ⦃ cns ⦄ ((_:-:_ c _ ⦃ instCode ⦄ ⦃ instCns ⦄) ∷ xs) new unifications = 
   let res = solve 
               c 
               ⦃ dec ⦄ ⦃ instCode ⦄ ⦃ val ⦄ ⦃ instCns ⦄ ⦃ cns ⦄ 
               (occursᵥ {listOf mixedConstraint} {⊤} C Code Constraint) 
               (λ n sub → Data.List.map (applyMixedConstraint c n sub)) 
-              (((catMaybes ∘ Data.List.map (getPermission c)) unifications) , ((catMaybes ∘ Data.List.map (getElse c)) unifications)) in
+              ((catMaybes ∘ Data.List.map (getPermission c)) unifications)
+              ((catMaybes ∘ Data.List.map (getPermission c)) new)
+              ((catMaybes ∘ Data.List.map (getElse c)) unifications) in
     (concat ∘ Data.List.map (λ (y , other) → defaultSchedule₀
       ((nubBy equal ∘ _++_ xs ∘ 
       Data.List.map (λ {(inj₁ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCode1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCode1 ⦄ ;
-                        (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCode1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCode1 ⦄}) ∘ 
-      catMaybes ∘ 
-      (Data.List.map ∘ getElse) c) 
-      y) (y ++ other))) res
-defaultSchedule₀ [] unifications = unifications ∷ []
+                        (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCode1 ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCode1 ⦄})) 
+                    ((catMaybes ∘ Data.List.map (getElse c)) y)) 
+      ((catMaybes ∘ Data.List.map (getElse c)) new ++ (catMaybes ∘ Data.List.map (getElse c)) y) 
+      ((filterᵇ (is-just ∘ getPermission c)) y ++ other))) res
+defaultSchedule₀ [] _ unifications = unifications ∷ []
 
 -- scheduler schedules the different solvers when multiple are used.
 defaultSchedule : 
@@ -69,9 +72,10 @@ defaultSchedule :
   → ⦃ ValueUtils 𝒞 Code Constraint ⦄
   → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
   → ⦃ Solver 𝒞 Code Constraint ⦄
+  → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
   → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
-defaultSchedule = concat ∘ Data.List.map (λ unification → defaultSchedule₀ (
+defaultSchedule new = concat ∘ Data.List.map (λ unification → defaultSchedule₀ (
   (nubBy equal ∘ 
    Data.List.map (λ {(inj₁ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄ ;
-                     (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄})) unification) unification)
+                     (inj₂ (_:-:_ c x ⦃ instCode ⦄ ⦃ instCns ⦄)) → _:-:_ c (record {}) ⦃ instCode ⦄ ⦃ instCns ⦄})) new) new unification)

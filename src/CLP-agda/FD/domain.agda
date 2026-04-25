@@ -102,6 +102,7 @@ instance  showℒFD : Show ℒFD
           showℒFD .Generics.show (x ≤FD y) = Generics.show x ++ " <= " ++ Generics.show y
           showℒFD .Generics.show (x ≥FD y) = Generics.show x ++ " >= " ++ Generics.show y
 
+
 applyFD : ℕ → FD → FD → FD
 applyFD x subst = foldFD ＃_ _＃+_ _＃-_ _＃*_ div (λ y → if x ≡ᵇ y then subst else (varFD y))
 

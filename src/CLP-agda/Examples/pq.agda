@@ -1,4 +1,4 @@
-module Examples.hanoi where
+module Examples.pq where
 
 open import Data.Bool hiding (_≟_ ; _∧_ ; not)
 open import Data.Nat hiding (_≟_)
@@ -32,7 +32,6 @@ open import ASP.asp
 open import ASP.dual
 open import ASP.nmr
 open import ASP.loops
-open import ASP.cforall
 
 open import Examples.myDomainGroup
 
@@ -40,10 +39,8 @@ open import Examples.myDomainGroup
 -- comparable to type declarations in mercury (also hindley-milner)
 data Functor : Set where
   fnot    : Functor → Functor
-  hanoi : FD → FD → Functor
-  move : StringLogic → StringLogic → FD → Functor
-  move₀ : FD → FD → FD → StringLogic → StringLogic → StringLogic → Functor
-  negmove : StringLogic → StringLogic → FD → Functor
+  fp : FD → Functor
+  fq : FD → Functor
   ffalse  : Functor
 
 functorD : HasDesc Functor
@@ -80,53 +77,32 @@ instance showFunctor : Show Functor
 -- These are general functions that we need in the generic CLP scheme.
 instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
           atomUtils .zipMatch (fnot x) (fnot y) = zipMatch atomUtils x y
-          atomUtils .zipMatch (hanoi a b) (hanoi x y) = 
-            just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ (_:-:_ fd𝒞 (b =ℒ y)) ∷ [])
-          atomUtils .zipMatch (move a b c) (move x y z) = 
-            just ((_:-:_ string𝒞 (a =ℒ x)) ∷ (_:-:_ string𝒞 (b =ℒ y)) ∷ (_:-:_ fd𝒞 (c =ℒ z)) ∷ [])
-          atomUtils .zipMatch (move₀ a b c d e f) (move₀ x y z g h i) = 
-            just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ (_:-:_ fd𝒞 (b =ℒ y)) ∷ (_:-:_ fd𝒞 (c =ℒ y)) ∷ 
-                  (_:-:_ string𝒞 (d =ℒ g)) ∷ (_:-:_ string𝒞 (e =ℒ h)) ∷ (_:-:_ string𝒞 (f =ℒ i)) ∷ [])
-          atomUtils .zipMatch (negmove a b c) (negmove x y z) = 
-            just ((_:-:_ string𝒞 (a =ℒ x)) ∷ (_:-:_ string𝒞 (b =ℒ y)) ∷ (_:-:_ fd𝒞 (c =ℒ z)) ∷ [])
+          atomUtils .zipMatch (fp a) (fq x) = 
+            just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ [])
+          atomUtils .zipMatch (fq a) (fq x) = 
+            just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ [])
           atomUtils .zipMatch ffalse ffalse = just []
           atomUtils .zipMatch _ _ = nothing
           atomUtils .increment n = 
             foldFunctor 
               fnot 
-              (λ a b → hanoi (incrementFD n a) (incrementFD n b))
-              (λ a b c → move (incrementString n a) (incrementString n b) (incrementFD n c))
-              (λ a b c d e f → move₀ 
-                (incrementFD n a) 
-                (incrementFD n b) 
-                (incrementFD n c) 
-                (incrementString n d) 
-                (incrementString n e) 
-                (incrementString n f))
-              (λ a b c → negmove (incrementString n a) (incrementString n b) (incrementFD n c))
+              (λ a → fp (incrementFD n a))
+              (λ a → fq (incrementFD n a))
               ffalse
           atomUtils .apply c₀ n z = 
             foldFunctor 
               fnot 
-              (λ a b → hanoi (apply valueUtils c₀ fd𝒞 n z a) (apply valueUtils c₀ fd𝒞 n z b))
-              (λ a b c → move (apply valueUtils c₀ string𝒞 n z a) (apply valueUtils c₀ string𝒞 n z b) (apply valueUtils c₀ fd𝒞 n z c))
-              (λ a b c d e f → move₀ 
-                (apply valueUtils c₀ fd𝒞 n z a) 
-                (apply valueUtils c₀ fd𝒞 n z b) 
-                (apply valueUtils c₀ fd𝒞 n z c) 
-                (apply valueUtils c₀ string𝒞 n z d) 
-                (apply valueUtils c₀ string𝒞 n z e) 
-                (apply valueUtils c₀ string𝒞 n z f))
-              (λ a b c → negmove (apply valueUtils c₀ string𝒞 n z a) (apply valueUtils c₀ string𝒞 n z b) (apply valueUtils c₀ fd𝒞 n z c))
+              (λ a → fp (apply valueUtils c₀ fd𝒞 n z a))
+              (λ a → fq (apply valueUtils c₀ fd𝒞 n z a))
               ffalse
 
 -- the streamreasoning example taken from "Constraint Answer Set Programming without Grounding"
 module program where
   open CLP.types
 
-  hanoiProgram :
+  forallTest :
     Clause Functor validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
-  hanoiProgram = do
+  forallTest = do
     N ← new
     T ← new
 
@@ -167,13 +143,3 @@ module program where
   real = (toIntern  ∘ proj₂ ∘ applyVars hanoiProgram) 0
   getDuals = computeDuals real
   getNmr = computeNMR real
-
-  cforallTest = is-just 
-                  (cForall 0 
-                    ((tt , (inj₂ (fd𝒞 :-: ((varFD 0) ＃≥ ＃ (pos 0))) ∷ inj₂ (fd𝒞 :-: ((varFD 0) ＃≤ ＃ (pos 3))) ∷ []) ∷ []) 
-                    ∷ (tt , (inj₂ (fd𝒞 :-: ((varFD 0) ＃> ＃ (pos 1))) ∷ []) ∷ []) 
-                    ∷ (tt , (inj₂ (fd𝒞 :-: ((varFD 0) ＃< ＃ (pos 3))) ∷ []) ∷ []) 
-                    ∷ (tt , (inj₂ (fd𝒞 :-: ((varFD 0) ＃< ＃ (pos 1))) ∷ []) ∷ []) 
-                    ∷ []))
-                  
-  {-# COMPILE GHC cforallTest as cforallTest #-}
