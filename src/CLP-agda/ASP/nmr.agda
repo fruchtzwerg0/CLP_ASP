@@ -211,6 +211,6 @@ addNMR :
   → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
   → List (Literal Atom 𝒞 Code Constraint)
   → List (Literal (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
-addNMR [] = atom nmrCheck ∷ []
+addNMR [] = [] -- atom nmrCheck ∷ []
 addNMR (atom ⦃ ft ⦄ ⦃ at ⦄ x ∷ xs) = atom (toNewAtom ⦃ at ⦄ x) ∷ addNMR xs
 addNMR (constraint x ∷ xs) = constraint x ∷ addNMR xs

@@ -211,6 +211,15 @@ checkLoops ⦃ dec ⦄ ⦃ at ⦄ constraints (x ∷ xs) y n with
 ... | _ =
   checkLoops constraints xs y (if isNot x then suc n else n)
 
+stripForalls :
+  ∀ {Atom 𝒞 Code Constraint}
+  → ASPAtom Atom 𝒞 Code Constraint
+  → List ℕ × ASPAtom Atom 𝒞 Code Constraint
+stripForalls {Atom}{C}{Code}{Constraint} (forAll v inner) with stripForalls inner | collectVarsᵥ {domainExpr} {⊤} C Code Constraint v
+... | (vs , g) | (vName ∷ _) = (vName ∷ vs , g)
+... | (vs , g) | [] = (vs , g)
+stripForalls g = ([] , g)
+
 {-# TERMINATING #-}
 checkASP : 
   ∀ {Atom 𝒞 Code Constraint}
@@ -245,16 +254,16 @@ checkASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄
     (λ ((nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → 
        ((nAspU , nChs , nNewStack , node ((x ∷ xs) , provenMod , at) [] ∷ nJustification) , nNewConstraints))
     (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ 
-      (aspU , at ∷ chs , stack , []) program goals constraints)                -- CHS success
-... | inj₁ [] = []                                                          -- CHS fail
+      (aspU , at ∷ chs , stack , []) program goals (x ∷ xs))                -- CHS success
+... | inj₁ [] = [] --((aspU , at ∷ chs , stack , []) , constraints) ∷ []                                                          -- CHS fail
 ... | inj₂ _ with checkLoops ⦃ dec ⦄ ⦃ ato ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ aspAtomUtils ⦃ aspU ⦄ ⦄ constraints stack at 0                     -- CHS neutral
-... | inj₁ [] = []                                                          -- Loop fail
+... | inj₁ [] = [] --((aspU , at ∷ chs , stack , []) , constraints) ∷ []                                                          -- Loop fail
 ... | inj₁ (x ∷ xs) = 
   Data.List.map 
     (λ ((nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → 
        ((nAspU , nChs , nNewStack , node ([] , chsMod , at) [] ∷ nJustification) , nNewConstraints))
     (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ 
-      (aspU , at ∷ chs , stack , []) program goals constraints)                 -- Loop success
+      (aspU , at ∷ chs , stack , []) program goals (x ∷ xs))                 -- Loop success
 ... | inj₂ _ = 
   let res = eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄) (aspU , chs , (at ∷ stack) , []) program (atom ⦃ ft ⦄ ⦃ ato ⦄ at ∷ []) constraints in -- Loop neutral
     (concat ∘ 
@@ -265,14 +274,31 @@ checkASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄
 
 interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program (constraint cn ∷ goals) constraints = 
   eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄) (aspU , chs , stack , justification) program (constraint cn ∷ goals) constraints
-interceptASP {Atom}{C}{Code}{Constraint} (aspU , chs , stack , justification) program (atom (forAll v x) ∷ goals) constraints with collectVarsᵥ {domainExpr} {⊤} C Code Constraint v
-interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program (atom (forAll v x) ∷ goals) constraints | (n ∷ _) =
+interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
+  (aspU , chs , stack , justification)
+  program
+  (atom (forAll v outer) ∷ goals)
+  constraints
+  with stripForalls (forAll v outer)
+... | (vs , innerGoal) =
   ASP.dual.maybeToList
-    (cForall ⦃ dec ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ n (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program (atom ⦃ ft ⦄ ⦃ ato ⦄ x ∷ goals) [])
-    Data.Maybe.>>= (just ∘ concat ∘ Data.List.map ((λ ((nAspU , nChs , nNewStack , nJustification) , _) → nJustification)))
-    Data.Maybe.>>= (λ justif → just (((aspU , chs , stack , justif) , constraints) ∷ [])))
-interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program (atom (forAll v x) ∷ goals) constraints | [] =
-  []
+    ( cForall
+        ⦃ dec ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄
+        vs
+        ( interceptASP
+            ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
+            (aspU , chs , stack , justification)
+            program
+            (atom ⦃ ft ⦄ ⦃ ato ⦄ innerGoal ∷ goals)
+            []
+        )
+    Data.Maybe.>>= (λ cells →
+        let
+          justif = concat (Data.List.map
+                     (λ ((_ , _ , _ , j) , _) → j)
+                     cells)
+        in
+        just (((aspU , chs , stack , justif) , constraints) ∷ [])))
 interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program (atom at ∷ goals) constraints = 
   checkASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ at (aspU , chs , stack , justification) program goals constraints
 interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program [] constraints = 

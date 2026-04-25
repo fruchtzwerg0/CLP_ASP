@@ -70,3 +70,79 @@ aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃
     (as , [] , [] , []) 
     internProgram) 
     internGoal
+
+addForalls :
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
+  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
+  → List (Σᵢ 𝒞 Code Code Constraint)
+  → List (Literal Atom 𝒞 Code Constraint)
+  → List (Literal (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
+addForalls ⦃ ft ⦄ ⦃ at ⦄ vars goalList =
+  Data.List.map
+    (toNewLiteral ⦃ at ⦄ ⦃ ft ⦄
+      (λ a → Data.List.foldr forAll (wrap a 0 []) vars))
+    goalList
+
+forallExecute :
+  ∀ {Atom 𝒞 validate Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ FTUtils Atom ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Grounder 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → ⦃ Show Atom ⦄
+  → Clause Atom validate 𝒞 Code Constraint
+  → Body Atom (validate bodyOfRule) 𝒞 Code Constraint  -- inner goal
+  → List (Σᵢ 𝒞 Code Code Constraint)                   -- forall variable terms
+  → (ASPAtom Atom 𝒞 Code Constraint → Bool)
+  → List String
+forallExecute {Atom}{C}{_}{Code}{Constraint}
+  ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄
+  program innerGoal vars showAtom
+  with (toIntern ∘ proj₂ ∘ applyVars program) 0 | toLiteralList innerGoal
+... | internProgram | internGoal =
+  Data.List.map
+    (aspFormat showAtom ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspShow ⦃ sho ⦄ ⦄)
+    (clpExecute
+      {Atom}{ASPAtom Atom C Code Constraint}
+      ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄
+      ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
+      ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
+      (λ x → Data.List.map
+               (λ y → _:--_ ((toNewAtom ⦃ ClauseI.instAt y ⦄ ∘ ClauseI.head) y)
+                            (Data.List.map
+                              (toNewLiteral ⦃ aspFT ⦃ ft ⦄ ⦄
+                                            ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
+                                            (toNewAtom ⦃ ClauseI.instAt y ⦄))
+                              (ClauseI.body y))
+                            ⦃ aspFT ⦃ ft ⦄ ⦄
+                            ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄)
+               x
+            ++ computeNMR ⦃ cns ⦄ ⦃ val ⦄ ⦃ as ⦄
+                          ⦃ aspAtomUtils ⦃ as ⦄ ⦄
+                          ⦃ aspFT ⦃ ft ⦄ ⦄
+                          ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
+                          ⦃ at ⦄ ⦃ dec ⦄ x
+            ++ computeDuals ⦃ as ⦄ ⦃ at ⦄
+                            ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
+                            ⦃ val ⦄
+                            ⦃ aspAtomUtils ⦃ as ⦄ ⦄
+                            ⦃ cns ⦄
+                            ⦃ aspFT ⦃ ft ⦄ ⦄
+                            ⦃ dec ⦄ x)
+      (addForalls
+        ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
+        ⦃ aspFT ⦃ ft ⦄ ⦄
+        vars)
+      (interceptASP ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄
+                    ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
+                    ⦃ solv ⦄ ⦃ sched ⦄)
+      true
+      (as , [] , [] , [])
+      internProgram
+      internGoal)

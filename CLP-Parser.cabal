@@ -226,9 +226,8 @@ library
       MAlonzo.Code.Effect.Functor
       MAlonzo.Code.Effect.Monad
       MAlonzo.Code.Empty.Qdomain
-      MAlonzo.Code.Examples.Qhanoi
+      MAlonzo.Code.Examples.QgraphColoring
       MAlonzo.Code.Examples.QmyDomainGroup
-      MAlonzo.Code.Examples.QtravelingSalesman
       MAlonzo.Code.FD.Qdomain
       MAlonzo.Code.FD.Qsolver
       MAlonzo.Code.Function
