@@ -4,10 +4,10 @@ open import CLP.types hiding (_>>=_)
 open import CLP.ftUtilsDerivation
 open import CLP.utilities
 open import ASP.types
-open import Data.Bool hiding (_≟_)
+open import Data.Bool
 open import Data.String 
   using (String; _==_; _++_)
-open import Data.Nat hiding (equal; _≟_)
+open import Data.Nat
 open import Data.List hiding (_++_)
 open import Data.List.Base hiding (_++_)
 open import Data.List.Membership.DecSetoid using (_∈?_)
@@ -18,10 +18,6 @@ open import Data.Sum
 open import Relation.Binary.PropositionalEquality 
   using (_≡_; refl)
 open import Function.Base
-
-open import Relation.Nullary
-open import Relation.Nullary.Decidable as Decidable
-open import Relation.Binary.PropositionalEquality
 
 open import Generics
 
@@ -99,7 +95,7 @@ showJustification :
   → Tree ((List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) × Modifier × (ASPAtom Atom 𝒞 Code Constraint))
   → String
 showJustification n bindings (node (con , modif , at) ys) = 
-  addToJustification modif n at bindings ++ (joinWith "" ∘ Data.List.map (formatOutput false [])) con ++ (joinWith "" ∘ Data.List.map (showJustification (suc n) bindings)) ys 
+  addToJustification modif n at bindings ++ (joinWith "" ∘ Data.List.map (showJustification (suc n) bindings)) ys 
 
 aspFormat : 
   ∀ {Atom 𝒞 Code Constraint}
@@ -113,8 +109,8 @@ aspFormat :
   → (ASPUtils Atom 𝒞 Code Constraint × List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint) × List (Tree ((List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) × Modifier × (ASPAtom Atom 𝒞 Code Constraint)))) × 
     (List ∘ List) ((Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint))
   → String
-aspFormat {Atom}{C}{Code}{Constraint} showAtom ⦃ inst ⦄ ⦃ sho ⦄ ((_ , chs , _ , justification) , (constraints ∷ _)) = 
-  "CHS:\n" ++ (joinWith ", " ∘ 
-              Data.List.map (Generics.show ⦃ sho ⦄ ∘ groundAtom constraints) ∘ filterᵇ showAtom) chs ++ 
-  "\nJustification:\n" ++ (joinWith "\n" ∘ Data.List.map (showJustification 0 constraints)) justification
+aspFormat {Atom}{C}{Code}{Constraint} showAtom ⦃ inst ⦄ ⦃ sho ⦄ ((_ , chs , _ , justification) , (constraints ∷ _)) =
+  "\nJustification:\n" ++ (joinWith "\n" ∘ Data.List.map (showJustification 0 constraints)) justification ++
+  "\nModel:\n" ++ (joinWith ", " ∘
+              Data.List.map (Generics.show ⦃ sho ⦄ ∘ groundAtom constraints) ∘ filterᵇ showAtom) chs
 aspFormat _ _ = "unsat"

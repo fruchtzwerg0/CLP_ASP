@@ -219,6 +219,7 @@ library
       MAlonzo.Code.Data.Vec.NZ45Zary
       MAlonzo.Code.Data.Word.Base
       MAlonzo.Code.Data.Word.Properties
+      MAlonzo.Code.Debug.Trace
       MAlonzo.Code.Effect.Applicative
       MAlonzo.Code.Effect.Choice
       MAlonzo.Code.Effect.Comonad

@@ -1,9 +1,11 @@
+{-# OPTIONS --rewriting #-}
 module Examples.graphColoring where
 
 open import Agda.Builtin.Int
 open import Data.Bool hiding (_≟_ ; _∧_ ; not)
 open import Data.Nat hiding (_≟_)
 open import Data.List
+open import Data.String
 open import Data.Sum
 open import Data.Product
 open import Data.Maybe hiding (_>>=_)
@@ -125,8 +127,6 @@ instance
                           (apply valueUtils c₀ string𝒞 n z b))
       ffalse
 
--- Graph coloring example from Gupta (2025)
--- Node mapping: 1→"a", 2→"b", 3→"c", 4→"d", 5→"e"
 module program where
   open CLP.types
 
@@ -137,18 +137,15 @@ module program where
     C ← new
     C2 ← new
 
-    -- other_color(X,C) :- color(C), color(C2), C \= C2, color(X,C2).
     otherColor X C :-
       color C ∧ₐ color C2 ∧ₐ
       string𝒞 ↣ C ≠ℒ C2 ∧
       nodeColor X C2 •ₐ
 
-    -- color(X,C) :- node(X), color(C), not other_color(X,C).
     nodeColor X C :-
       node X ∧ₐ color C ∧ₐ not (otherColor X C) •ₐ
 
     Y ← new
-    -- :- edge(X,Y), color(X,C), color(Y,C).
     ffalse :-
       edge X Y ∧ₐ
       nodeColor X C ∧ₐ
@@ -179,20 +176,20 @@ module program where
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question =
     nodeColor (~ "a") (varString 0) •ₐ
-
-  forAllQuestion :
-    Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
-  forAllQuestion =
-    not (node (varString 0)) •ₐ
+  questionTest :
+    List (Literal (ASPAtom Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ) My𝒞 ⟦_⟧ ⟦_⟧ℒ)
+  questionTest =
+    atom (wrap (not (otherColor (~ "a") (varString 0))) 1 ((string𝒞 :-: (~ "a")) ∷ (string𝒞 :-: varString 0) ∷ (string𝒞 :-: varString 1) ∷ [])) ∷ []
 
   realColoring = (toIntern ∘ proj₂ ∘ applyVars graphColoring) 0
 
-  execute = (take 5 ∘ aspExecute graphColoring question) (λ { (wrap (nodeColor _ _) _ _) → true ; _ → false })
+  execute = (take 1 ∘ aspExecute graphColoring question) (λ { (wrap (nodeColor _ _) _ _) → true ; _ → false })
 
-  fExecute = (take 1 ∘ forallExecute graphColoring forAllQuestion ((string𝒞 :-: varString 0) ∷ [])) (λ { (wrap (nodeColor _ _) _ _) → true ; _ → false })
+  fExecute = (take 5 ∘ aspExecuteDirect graphColoring questionTest) (λ { (wrap (nodeColor _ _) _ _) → true ; _ → false })
 
   {-# COMPILE GHC execute as execute #-}
 
   real = (toIntern  ∘ proj₂ ∘ applyVars graphColoring) 0
   getDuals = computeDuals real
   getNmr = computeNMR real
+  getOlon = findOLON real

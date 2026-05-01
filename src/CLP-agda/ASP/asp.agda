@@ -1,4 +1,5 @@
 -- general top-level aggregator for asp usage
+{-# OPTIONS --rewriting #-}
 
 module ASP.asp where
 
@@ -58,33 +59,30 @@ aspExecute :
   → List String
 aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄ program goal showAtom with (toIntern  ∘ proj₂ ∘ applyVars program) 0 | toLiteralList goal
 aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄ program goal showAtom | internProgram | internGoal =
-  (Data.List.map (aspFormat showAtom ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspShow ⦃ sho ⦄ ⦄) ∘ clpExecute {Atom}{ASPAtom Atom C Code Constraint} ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
+  (Data.List.map (aspFormat showAtom ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspShow ⦃ ft ⦄ ⦃ as ⦄ ⦃ sho ⦄ ⦄) ∘ clpExecute {Atom}{ASPAtom Atom C Code Constraint} ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
     (λ x → Data.List.map (λ y → _:--_ ((toNewAtom ⦃ ClauseI.instAt y ⦄ ∘ ClauseI.head) y)
                           (Data.List.map (toNewLiteral ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ (toNewAtom ⦃ ClauseI.instAt y ⦄)) (ClauseI.body y))
                           ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄) x 
     ++ computeNMR ⦃ cns ⦄ ⦃ val ⦄ ⦃ as ⦄ ⦃ aspAtomUtils ⦃ as ⦄ ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ at ⦄ ⦃ dec ⦄ x 
     ++ computeDuals ⦃ as ⦄ ⦃ at ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ val ⦄ ⦃ aspAtomUtils ⦃ as ⦄ ⦄ ⦃ cns ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ dec ⦄ x) 
     (addNMR ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄)
-    (interceptASP ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
+    (interceptASP ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄)
     true
     (as , [] , [] , []) 
     internProgram) 
     internGoal
 
-addForalls :
-  ∀ {Atom 𝒞 Code Constraint}
-  → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
-  → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
-  → List (Σᵢ 𝒞 Code Code Constraint)
-  → List (Literal Atom 𝒞 Code Constraint)
-  → List (Literal (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
-addForalls ⦃ ft ⦄ ⦃ at ⦄ vars goalList =
-  Data.List.map
-    (toNewLiteral ⦃ at ⦄ ⦃ ft ⦄
-      (λ a → Data.List.foldr forAll (wrap a 0 []) vars))
-    goalList
+-- Direct execution of ASPAtom goals: bypasses clpExecute entirely
+-- (because clpExecute insists ConcreteAtom ≠ AbstractAtom in the
+-- question type), and instead calls interceptASP directly with a
+-- goal that is already in ASPAtom form.
+--
+-- Useful for debugging: lets you supply a goal like
+--   atom (wrap (fnot o_other_color_1 ...) 0 []) ∷ []
+-- and see exactly what answer interceptASP produces, with what
+-- residual constraints.
 
-forallExecute :
+aspExecuteDirect :
   ∀ {Atom 𝒞 validate Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
   → ⦃ FTUtils Atom ⦄
@@ -97,52 +95,60 @@ forallExecute :
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → ⦃ Show Atom ⦄
   → Clause Atom validate 𝒞 Code Constraint
-  → Body Atom (validate bodyOfRule) 𝒞 Code Constraint  -- inner goal
-  → List (Σᵢ 𝒞 Code Code Constraint)                   -- forall variable terms
+  → List (Literal (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint)
   → (ASPAtom Atom 𝒞 Code Constraint → Bool)
   → List String
-forallExecute {Atom}{C}{_}{Code}{Constraint}
+aspExecuteDirect {Atom}{C}{_}{Code}{Constraint}
   ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ at ⦄ ⦃ as ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ ⦃ sho ⦄
-  program innerGoal vars showAtom
-  with (toIntern ∘ proj₂ ∘ applyVars program) 0 | toLiteralList innerGoal
-... | internProgram | internGoal =
-  Data.List.map
-    (aspFormat showAtom ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspShow ⦃ sho ⦄ ⦄)
-    (clpExecute
-      {Atom}{ASPAtom Atom C Code Constraint}
-      ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄
-      ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
-      ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
-      (λ x → Data.List.map
-               (λ y → _:--_ ((toNewAtom ⦃ ClauseI.instAt y ⦄ ∘ ClauseI.head) y)
-                            (Data.List.map
-                              (toNewLiteral ⦃ aspFT ⦃ ft ⦄ ⦄
-                                            ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
-                                            (toNewAtom ⦃ ClauseI.instAt y ⦄))
-                              (ClauseI.body y))
-                            ⦃ aspFT ⦃ ft ⦄ ⦄
-                            ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄)
-               x
-            ++ computeNMR ⦃ cns ⦄ ⦃ val ⦄ ⦃ as ⦄
-                          ⦃ aspAtomUtils ⦃ as ⦄ ⦄
-                          ⦃ aspFT ⦃ ft ⦄ ⦄
-                          ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
-                          ⦃ at ⦄ ⦃ dec ⦄ x
-            ++ computeDuals ⦃ as ⦄ ⦃ at ⦄
-                            ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
-                            ⦃ val ⦄
-                            ⦃ aspAtomUtils ⦃ as ⦄ ⦄
-                            ⦃ cns ⦄
-                            ⦃ aspFT ⦃ ft ⦄ ⦄
-                            ⦃ dec ⦄ x)
-      (addForalls
-        ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
-        ⦃ aspFT ⦃ ft ⦄ ⦄
-        vars)
-      (interceptASP ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄
+  program goalLiterals showAtom
+  with (toIntern ∘ proj₂ ∘ applyVars program) 0
+... | internProgram =
+  let
+    -- Build the same translated program that aspExecute uses:
+    -- regular clauses (translated to ASPAtom literals) + NMR + duals.
+    aspProgram : List (ClauseI (ASPAtom Atom C Code Constraint) C Code Constraint)
+    aspProgram =
+      Data.List.map
+        (λ y → _:--_ ((toNewAtom ⦃ ClauseI.instAt y ⦄ ∘ ClauseI.head) y)
+                     (Data.List.map
+                       (toNewLiteral ⦃ aspFT ⦃ ft ⦄ ⦄
+                                     ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
+                                     (toNewAtom ⦃ ClauseI.instAt y ⦄))
+                       (ClauseI.body y))
+                     ⦃ aspFT ⦃ ft ⦄ ⦄
+                     ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄)
+        internProgram
+      ++ computeNMR ⦃ cns ⦄ ⦃ val ⦄ ⦃ as ⦄
+                    ⦃ aspAtomUtils ⦃ as ⦄ ⦄
+                    ⦃ aspFT ⦃ ft ⦄ ⦄
                     ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
-                    ⦃ solv ⦄ ⦃ sched ⦄)
-      true
-      (as , [] , [] , [])
-      internProgram
-      internGoal)
+                    ⦃ at ⦄ ⦃ dec ⦄ internProgram
+      ++ computeDuals ⦃ as ⦄ ⦃ at ⦄
+                      ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
+                      ⦃ val ⦄
+                      ⦃ aspAtomUtils ⦃ as ⦄ ⦄
+                      ⦃ cns ⦄
+                      ⦃ aspFT ⦃ ft ⦄ ⦄
+                      ⦃ dec ⦄ internProgram
+
+    -- Call interceptASP directly with the user-supplied goal.
+    rawResults =
+      interceptASP ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄
+                   ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
+                   ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
+                   (as , [] , [] , [])
+                   aspProgram
+                   goalLiterals
+                   ([] ∷ [])
+
+    -- Apply grounding to each result's constraint store, just like
+    -- the `true`-branch of clpExecute does.
+    custs = Data.List.map proj₁ rawResults
+    payls = Data.List.map proj₂ rawResults
+    grounded =
+      Data.List.zip custs
+        (Data.List.map (Data.List.map (groundSchedule [] [])) payls)
+  in
+  Data.List.map
+    (aspFormat showAtom ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ aspShow ⦃ ft ⦄ ⦃ as ⦄ ⦃ sho ⦄ ⦄)
+    grounded
