@@ -133,8 +133,8 @@ instance  aspAtomUtils : ∀ {Atom 𝒞 Code Constraint} → ⦃ ASPUtils Atom �
           aspAtomUtils .isNot (forAll a b) = isNot b
           aspAtomUtils .isNot nmrCheck = false
           aspAtomUtils .isNot (chk a b c) = true
-          aspAtomUtils .ASP.types.isFalse ffalse = true
-          aspAtomUtils .ASP.types.isFalse _ = false
+          aspAtomUtils .ASP.types.isFalse (wrap at _ _) = true --ASP.types.isFalse at
+          aspAtomUtils .ASP.types.isFalse _ = true --false
           aspAtomUtils .toggle (wrap at a b) = wrap (toggle at) a b
           aspAtomUtils .toggle (forAll a b) = forAll a (toggle b)
           aspAtomUtils .toggle nmrCheck = nmrCheck
@@ -188,6 +188,20 @@ private
   isExactMatch store unif =
     all (λ c → entails store (inj₁ c)) unif
 
+-- Reflexive-binding test: a binding (x =ℒ y) is reflexive iff
+-- its two sides are decidably equal Code values.  DecEq on Code
+-- comes from the Σᵢ's `decval` instance arg, brought into scope
+-- via the explicit ⦃ dv ⦄ destructuring.  This is the building
+-- block for structural atom equality.
+isReflexiveBinding :
+  ∀ {𝒞 Code Constraint}
+  → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint → Bool
+isReflexiveBinding (_:-:_ c (x =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ dv ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄)
+  with x ≟ y
+... | yes _ = true
+... | no  _ = false
+isReflexiveBinding (_:-:_ c (x ≠ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ dv ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) = false
+
 checkCHS :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
@@ -209,11 +223,20 @@ checkCHS {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ at ⦄ constrain
       let direct = findExactMatch y chs in
       Data.Maybe.maybe (λ _ → inj₁ constraints) (inj₂ (record {})) direct
   where
+    -- Structural-equality early return: if every binding in the
+    -- unification is reflexive (x =ℒ x via decidable equality),
+    -- the atoms are syntactically identical.  Reflexive bindings
+    -- are trivially entailed by any store, so isExactMatch would
+    -- return true anyway — skipping the scheduler-based call
+    -- saves significant work on the common chs-hit fast path.
     matchExact :
       Atom → Atom → Bool
     matchExact x target with zipMatch at x target
-    ... | nothing   = false
-    ... | just unif = isExactMatch constraints unif
+    ... | nothing      = false
+    ... | just unifs   =
+      if all isReflexiveBinding unifs
+        then true
+        else isExactMatch constraints unifs
  
     findExactMatch :
       Atom → List Atom → Maybe ⊤
@@ -222,6 +245,33 @@ checkCHS {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ at ⦄ constrain
       if matchExact x target
         then just (record {})
         else findExactMatch target xs
+
+-- Structural atom equality, used for chs insertion dedup.
+-- Same fast path as inside matchExact, separated as its own
+-- predicate so it can be reused at insertion sites.
+structurallyEqual :
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → Atom → Atom → Bool
+structurallyEqual ⦃ at ⦄ x y with zipMatch at x y
+... | nothing    = false
+... | just unifs = all isReflexiveBinding unifs
+
+-- Insert into chs only if no structurally-equal entry is
+-- already present.  This eliminates duplicate chs entries and
+-- cuts down on subsequent checkCHS lookup work.  Using
+-- structural equality (DecEq on Code values) instead of full
+-- constraint-aware match means insertion is scheduler-free.
+prependIfNew :
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → Atom
+  → List Atom
+  → List Atom
+prependIfNew ⦃ at ⦄ y chs =
+  if any (structurallyEqual y) chs
+    then chs
+    else y ∷ chs
 
 -- Checks the call stack for loops
 
@@ -308,14 +358,14 @@ checkASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄
     (λ ((nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → 
        ((nAspU , nChs , nNewStack , node ([] , chsMod , at) [] ∷ nJustification) , nNewConstraints))
     (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ 
-      (aspU , at ∷ chs , stack , []) program goals (x ∷ xs))                 -- Loop success
+      (aspU , prependIfNew ⦃ ato ⦄ at chs , stack , []) program goals (x ∷ xs))                 -- Loop success
 ... | inj₂ _ = 
   let res = eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄) (aspU , chs , (at ∷ stack) , []) program (atom ⦃ ft ⦄ ⦃ ato ⦄ at ∷ []) constraints in
     (concat ∘ 
       Data.List.map 
         (λ ((aspU , chs , newStack , justification) , newConstraints) → 
           Data.List.map (λ ((nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → ((nAspU , nChs , nNewStack , node ([] , noneMod , at) justification ∷ nJustification) , nNewConstraints)) 
-            (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ (aspU , (at ∷ chs) , stack , []) program goals newConstraints))) res
+            (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ (aspU , prependIfNew ⦃ ato ⦄ at chs , stack , []) program goals newConstraints))) res
 
 interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program (constraint cn ∷ goals) constraints = 
   eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄) (aspU , chs , stack , justification) program (constraint cn ∷ goals) constraints

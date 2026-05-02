@@ -112,5 +112,17 @@ aspFormat :
 aspFormat {Atom}{C}{Code}{Constraint} showAtom ⦃ inst ⦄ ⦃ sho ⦄ ((_ , chs , _ , justification) , (constraints ∷ _)) =
   "\nJustification:\n" ++ (joinWith "\n" ∘ Data.List.map (showJustification 0 constraints)) justification ++
   "\nModel:\n" ++ (joinWith ", " ∘
+              dedupStrings ∘
               Data.List.map (Generics.show ⦃ sho ⦄ ∘ groundAtom constraints) ∘ filterᵇ showAtom) chs
+  where
+    -- After grounding, two chs entries that originally had
+    -- different fresh var IDs may render to the same display
+    -- string.  We dedup at display time so the printed CHS
+    -- doesn't contain visually-identical entries.
+    dedupStrings : List String → List String
+    dedupStrings []       = []
+    dedupStrings (x ∷ xs) =
+      if any (Data.String._==_ x) xs
+        then dedupStrings xs
+        else x ∷ dedupStrings xs
 aspFormat _ _ = "unsat"

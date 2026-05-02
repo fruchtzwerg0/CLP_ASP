@@ -1,3 +1,4 @@
+{-# OPTIONS --rewriting #-}
 module Examples.hanoi_without_fd where
 
 open import Data.Bool hiding (_≟_ ; _∧_ ; not)
@@ -42,7 +43,7 @@ data Functor : Set where
   fnot    : Functor → Functor
   hanoi : NatLogic → NatLogic → Functor
   move : StringLogic → StringLogic → NatLogic → Functor
-  move₀ : NatLogic → NatLogic → NatLogic → StringLogic → StringLogic → StringLogic → Functor
+  move0 : NatLogic → NatLogic → NatLogic → StringLogic → StringLogic → StringLogic → Functor
   negmove : StringLogic → StringLogic → NatLogic → Functor
   ffalse  : Functor
 
@@ -84,7 +85,7 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
             just ((_:-:_ nat𝒞 (a =ℒ x)) ∷ (_:-:_ nat𝒞 (b =ℒ y)) ∷ [])
           atomUtils .zipMatch (move a b c) (move x y z) = 
             just ((_:-:_ string𝒞 (a =ℒ x)) ∷ (_:-:_ string𝒞 (b =ℒ y)) ∷ (_:-:_ nat𝒞 (c =ℒ z)) ∷ [])
-          atomUtils .zipMatch (move₀ a b c d e f) (move₀ x y z g h i) = 
+          atomUtils .zipMatch (move0 a b c d e f) (move0 x y z g h i) = 
             just ((_:-:_ nat𝒞 (a =ℒ x)) ∷ (_:-:_ nat𝒞 (b =ℒ y)) ∷ (_:-:_ nat𝒞 (c =ℒ y)) ∷ 
                   (_:-:_ string𝒞 (d =ℒ g)) ∷ (_:-:_ string𝒞 (e =ℒ h)) ∷ (_:-:_ string𝒞 (f =ℒ i)) ∷ [])
           atomUtils .zipMatch (negmove a b c) (negmove x y z) = 
@@ -96,7 +97,7 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
               fnot 
               (λ a b → hanoi (incrementNat n a) (incrementNat n b))
               (λ a b c → move (incrementString n a) (incrementString n b) (incrementNat n c))
-              (λ a b c d e f → move₀ 
+              (λ a b c d e f → move0 
                 (incrementNat n a) 
                 (incrementNat n b) 
                 (incrementNat n c) 
@@ -117,7 +118,7 @@ module program where
     T ← new
 
     hanoi N T :-
-      move₀ N zero T (~ "a") (~ "b") (~ "c") •ₐ
+      move0 N zero T (~ "a") (~ "b") (~ "c") •ₐ
     
     Ti ← new
     Tf ← new
@@ -127,12 +128,12 @@ module program where
     Pf ← new
     Px ← new
 
-    move₀ (suc (suc N)) Ti Tf Pi Pf Px :-
-      move₀ (suc N) Ti T1 Pi Px Pf ∧ₐ
-      move₀ (suc zero) T1 T2 Pi Pf Px ∧ₐ
-      move₀ (suc N) T2 Tf Px Pf Pi •ₐ
+    move0 (suc (suc N)) Ti Tf Pi Pf Px :-
+      move0 (suc N) Ti T1 Pi Px Pf ∧ₐ
+      move0 (suc zero) T1 T2 Pi Pf Px ∧ₐ
+      move0 (suc N) T2 Tf Px Pf Pi •ₐ
     
-    move₀ (suc zero) Ti (suc Ti) Pi Pf Px :-
+    move0 (suc zero) Ti (suc Ti) Pi Pf Px :-
       move Pi Pf (suc Ti) •ₐ
 
     move Pi Pf T :- not (negmove Pi Pf T) •ₐ

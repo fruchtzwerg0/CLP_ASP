@@ -2,7 +2,7 @@
 
 module Main (main) where
 
-import MAlonzo.Code.Examples.QgraphColoring
+import MAlonzo.Code.Examples.QtravelingSalesman
 import FDSolver
 import Data.Text (pack, unpack)
 

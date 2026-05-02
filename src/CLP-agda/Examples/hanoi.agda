@@ -1,3 +1,4 @@
+{-# OPTIONS --rewriting #-}
 module Examples.hanoi where
 
 open import Data.Bool hiding (_≟_ ; _∧_ ; not)
@@ -42,7 +43,7 @@ data Functor : Set where
   fnot    : Functor → Functor
   hanoi : FD → FD → Functor
   move : StringLogic → StringLogic → FD → Functor
-  move₀ : FD → FD → FD → StringLogic → StringLogic → StringLogic → Functor
+  move0 : FD → FD → FD → StringLogic → StringLogic → StringLogic → Functor
   negmove : StringLogic → StringLogic → FD → Functor
   ffalse  : Functor
 
@@ -84,7 +85,7 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
             just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ (_:-:_ fd𝒞 (b =ℒ y)) ∷ [])
           atomUtils .zipMatch (move a b c) (move x y z) = 
             just ((_:-:_ string𝒞 (a =ℒ x)) ∷ (_:-:_ string𝒞 (b =ℒ y)) ∷ (_:-:_ fd𝒞 (c =ℒ z)) ∷ [])
-          atomUtils .zipMatch (move₀ a b c d e f) (move₀ x y z g h i) = 
+          atomUtils .zipMatch (move0 a b c d e f) (move0 x y z g h i) = 
             just ((_:-:_ fd𝒞 (a =ℒ x)) ∷ (_:-:_ fd𝒞 (b =ℒ y)) ∷ (_:-:_ fd𝒞 (c =ℒ y)) ∷ 
                   (_:-:_ string𝒞 (d =ℒ g)) ∷ (_:-:_ string𝒞 (e =ℒ h)) ∷ (_:-:_ string𝒞 (f =ℒ i)) ∷ [])
           atomUtils .zipMatch (negmove a b c) (negmove x y z) = 
@@ -96,7 +97,7 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
               fnot 
               (λ a b → hanoi (incrementFD n a) (incrementFD n b))
               (λ a b c → move (incrementString n a) (incrementString n b) (incrementFD n c))
-              (λ a b c d e f → move₀ 
+              (λ a b c d e f → move0 
                 (incrementFD n a) 
                 (incrementFD n b) 
                 (incrementFD n c) 
@@ -110,7 +111,7 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
               fnot 
               (λ a b → hanoi (apply valueUtils c₀ fd𝒞 n z a) (apply valueUtils c₀ fd𝒞 n z b))
               (λ a b c → move (apply valueUtils c₀ string𝒞 n z a) (apply valueUtils c₀ string𝒞 n z b) (apply valueUtils c₀ fd𝒞 n z c))
-              (λ a b c d e f → move₀ 
+              (λ a b c d e f → move0 
                 (apply valueUtils c₀ fd𝒞 n z a) 
                 (apply valueUtils c₀ fd𝒞 n z b) 
                 (apply valueUtils c₀ fd𝒞 n z c) 
@@ -131,7 +132,7 @@ module program where
     T ← new
 
     hanoi N T :-
-      move₀ N (＃ (pos 0)) T (~ "a") (~ "b") (~ "c") •ₐ
+      move0 N (＃ (pos 0)) T (~ "a") (~ "b") (~ "c") •ₐ
     
     Ti ← new
     Tf ← new
@@ -141,13 +142,13 @@ module program where
     Pf ← new
     Px ← new
 
-    move₀ N Ti Tf Pi Pf Px :-
+    move0 N Ti Tf Pi Pf Px :-
       fd𝒞 ↪ N ＃> ＃ (pos 1) ∧
-      move₀ (N ＃- ＃ (pos 1)) Ti T1 Pi Px Pf ∧ₐ
-      move₀ (＃ (pos 1)) T1 T2 Pi Pf Px ∧ₐ
-      move₀ (N ＃- ＃ (pos 1)) T2 Tf Px Pf Pi •ₐ
+      move0 (N ＃- ＃ (pos 1)) Ti T1 Pi Px Pf ∧ₐ
+      move0 (＃ (pos 1)) T1 T2 Pi Pf Px ∧ₐ
+      move0 (N ＃- ＃ (pos 1)) T2 Tf Px Pf Pi •ₐ
     
-    move₀ (＃ (pos 1)) Ti Tf Pi Pf Px :-
+    move0 (＃ (pos 1)) Ti Tf Pi Pf Px :-
       fd𝒞 ↣ Tf =ℒ Ti ＃+ ＃ (pos 1) ∧
       move Pi Pf Tf •ₐ
 
@@ -157,7 +158,7 @@ module program where
   question :
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question = 
-    hanoi (＃ (pos 4)) (varFD 0) •ₐ
+    hanoi (＃ (pos 5)) (varFD 0) •ₐ
 
   execute = (take 1 ∘ aspExecute hanoiProgram question) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
 
@@ -167,13 +168,3 @@ module program where
   real = (toIntern  ∘ proj₂ ∘ applyVars hanoiProgram) 0
   getDuals = computeDuals real
   getNmr = computeNMR real
-
-  cforallTest = is-just 
-                  (cForall 0 
-                    ((tt , (inj₂ (fd𝒞 :-: ((varFD 0) ＃≥ ＃ (pos 0))) ∷ inj₂ (fd𝒞 :-: ((varFD 0) ＃≤ ＃ (pos 3))) ∷ []) ∷ []) 
-                    ∷ (tt , (inj₂ (fd𝒞 :-: ((varFD 0) ＃> ＃ (pos 1))) ∷ []) ∷ []) 
-                    ∷ (tt , (inj₂ (fd𝒞 :-: ((varFD 0) ＃< ＃ (pos 3))) ∷ []) ∷ []) 
-                    ∷ (tt , (inj₂ (fd𝒞 :-: ((varFD 0) ＃< ＃ (pos 1))) ∷ []) ∷ []) 
-                    ∷ []))
-                  
-  {-# COMPILE GHC cforallTest as cforallTest #-}

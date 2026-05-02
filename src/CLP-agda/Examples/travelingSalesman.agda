@@ -1,3 +1,4 @@
+{-# OPTIONS --rewriting #-}
 module Examples.travelingSalesman where
 
 open import Agda.Builtin.Int
@@ -291,7 +292,7 @@ module program where
         ∷ []) (cycle (varFD 0) (varFD 1) , 0)
   getOlon = findOLON realTravel
   -}
-  execute = (take 1 ∘ aspExecute travelingSalesma question) (λ { (wrap (travelPath _ _ _) _ _) → true ; _ → true })
+  execute = (take 1 ∘ aspExecute travelingSalesma question) (λ { (wrap (travelPath _ _ _) _ _) → true ; _ → false })
 
   
   {-# COMPILE GHC execute as execute #-}

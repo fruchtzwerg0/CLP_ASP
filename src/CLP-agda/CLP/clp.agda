@@ -28,7 +28,36 @@ open import CLP.outputFormatter
 maybeToList : {A : Set} → Maybe (List A) → List A
 maybeToList nothing  = []
 maybeToList (just x) = x
-{-
+
+-- ---------------------------------------------------------------------
+-- Inline-variable optimisation for bindAndRename
+-- ---------------------------------------------------------------------
+--
+-- After a clause is selected for an atom call, zipMatch produces
+-- equalities  x =ℒ y  where:
+--   * x comes from the CALL atom (atom₀)
+--   * y comes from the (renamed) clause head (atom₁)
+--
+-- The clause's renamed head variables are FRESH in the calling
+-- scope.  If a fresh head variable appears in EXACTLY ONE
+-- equality, we can substitute it directly into the body in place
+-- of the call value, eliminating that variable from the equation
+-- system entirely — no constraint needs to be scheduled.
+--
+-- Concretely, for a binding  x =ℒ y  with  varName y = just z
+-- (i.e., y is a variable named z) and z occurs only once in the
+-- collected bindings, we substitute  z ↦ x  in every body
+-- literal.
+--
+-- For graph-coloring-like programs where every clause-head
+-- variable occurs once in the head and not at all in the body
+-- of the OTHER bindings, this completely eliminates head
+-- unification overhead.
+--
+-- Bindings that don't qualify (RHS isn't a variable, or its var
+-- appears multiple times) become real constraints scheduled into
+-- the store.
+
 applyToBody : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -39,19 +68,22 @@ applyToBody :
   → List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
   → Literal Atom 𝒞 Code Constraint
   → Literal Atom 𝒞 Code Constraint
+applyToBody [] lit = lit
+-- The binding (_:-:_ c (x =ℒ y)) means: x (from the call) was
+-- unified with y (a fresh clause-head variable).  We substitute
+-- the variable z = varName y by the call value x.
 applyToBody ((_:-:_ c (x =ℒ y)) ∷ varBindings) (constraint l) with varName y
-... | just z = applyToBody varBindings (constraint (applyMixedConstraint c z y l))
+... | just z = applyToBody varBindings (constraint (applyMixedConstraint c z x l))
 ... | nothing = applyToBody varBindings (constraint l)
 applyToBody ((_:-:_ c (x ≠ℒ y)) ∷ varBindings) (constraint l) with varName y
-... | just z = applyToBody varBindings (constraint (applyMixedConstraint c z y l))
+... | just z = applyToBody varBindings (constraint (applyMixedConstraint c z x l))
 ... | nothing = applyToBody varBindings (constraint l)
 applyToBody ((_:-:_ c (x =ℒ y)) ∷ varBindings) (atom ⦃ ft ⦄ ⦃ at ⦄ l) with varName y
-... | just z = applyToBody varBindings (atom (apply at c z y l))
-... | nothing = applyToBody varBindings (atom l)
+... | just z = applyToBody varBindings (atom ⦃ ft ⦄ ⦃ at ⦄ (apply at c z x l))
+... | nothing = applyToBody varBindings (atom ⦃ ft ⦄ ⦃ at ⦄ l)
 applyToBody ((_:-:_ c (x ≠ℒ y)) ∷ varBindings) (atom ⦃ ft ⦄ ⦃ at ⦄ l) with varName y
-... | just z = applyToBody varBindings (atom (apply at c z y l))
-... | nothing = applyToBody varBindings (atom l)
-applyToBody [] = id
+... | just z = applyToBody varBindings (atom ⦃ ft ⦄ ⦃ at ⦄ (apply at c z x l))
+... | nothing = applyToBody varBindings (atom ⦃ ft ⦄ ⦃ at ⦄ l)
 
 decToBool : ∀ {ℓ} {P : Set ℓ} → Dec P → Bool
 decToBool (yes _) = true
@@ -76,30 +108,36 @@ bindAndRename :
 bindAndRename {Atom}{C}{Code}{Constraint} ⦃ ft ⦄ atom₀ n (atom₁ :-- l) with zipMatch ft atom₀ (increment ft (suc n) atom₁)
 ... | nothing = []
 ... | (just newBindings) = 
-  let cleanBindings = filterᵇ (λ { (_:-:_ c (x =ℒ y)) → (not ∘ decToBool) (x ≟ y) ; (_:-:_ c (x ≠ℒ y)) → (not ∘ decToBool) (x ≟ y) }) newBindings in
-  let (varBindings , otherBindings) = 
-          (partitionᵇ (λ {(_:-:_ c (x =ℒ y)) → isValid (varName y Data.Maybe.>>= (λ z → (just ∘ _≡ᵇ_ 1 ∘ length ∘ filterᵇ (_≡ᵇ_ z) ∘ collectVarsᵥ {listOf genericConstraint} {Atom} C Code Constraint) cleanBindings)) ; 
-                          (_:-:_ c (x ≠ℒ y)) → isValid (varName y Data.Maybe.>>= (λ z → (just ∘ _≡ᵇ_ 1 ∘ length ∘ filterᵇ (_≡ᵇ_ z) ∘ collectVarsᵥ {listOf genericConstraint} {Atom} C Code Constraint) cleanBindings)) }) cleanBindings) in
-  (Data.List.map (constraint ∘ inj₁)) otherBindings
-   ++ (Data.List.map 
-        (applyToBody varBindings)
-           ∘ Data.List.map (incrementLiteral (suc n))) l
--}
-bindAndRename : 
-  {Atom : Set}
-  → {𝒞 : Set}
-  → {Code : (𝒞 → Set)}
-  → {Constraint : (𝒞 → Set)}
-  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
-  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
-  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-  → Atom 
-  → ℕ 
-  → ClauseI Atom 𝒞 Code Constraint 
-  → List (Literal Atom 𝒞 Code Constraint)
-bindAndRename {Atom}{C}{Code}{Constraint} ⦃ ft ⦄ atom₀ n (atom₁ :-- l) =
-  ((Data.List.map (constraint ∘ inj₁)) ∘ maybeToList ∘ (zipMatch ft atom₀)) (increment ft (suc n) atom₁) 
-   ++ Data.List.map (incrementLiteral (suc n)) l
+  let
+    -- Drop trivial reflexive bindings  x =ℒ x  /  x ≠ℒ x.
+    cleanBindings = filterᵇ
+      (λ { (_:-:_ c (x =ℒ y)) → (Data.Bool.not ∘ decToBool) (x ≟ y)
+         ; (_:-:_ c (x ≠ℒ y)) → (Data.Bool.not ∘ decToBool) (x ≟ y) })
+      newBindings
+
+    -- Partition into:
+    --   varBindings : bindings whose RHS y is a variable named z,
+    --                 AND z occurs in cleanBindings exactly once
+    --                 (so it can be inlined cleanly).
+    --   otherBindings : everything else (real constraints).
+    (varBindings , otherBindings) = partitionᵇ
+      (λ { (_:-:_ c (x =ℒ y)) →
+              isValid (varName y Data.Maybe.>>= λ z →
+                (just ∘ _≡ᵇ_ 1 ∘ length ∘ filterᵇ (_≡ᵇ_ z)
+                 ∘ collectVarsᵥ {listOf genericConstraint} {Atom} C Code Constraint) cleanBindings)
+         ; (_:-:_ c (x ≠ℒ y)) →
+              isValid (varName y Data.Maybe.>>= λ z →
+                (just ∘ _≡ᵇ_ 1 ∘ length ∘ filterᵇ (_≡ᵇ_ z)
+                 ∘ collectVarsᵥ {listOf genericConstraint} {Atom} C Code Constraint) cleanBindings) })
+      cleanBindings
+  in
+    -- Real constraints (the unifications that could not be inlined)
+    -- get scheduled into the store via inj₁.
+    (Data.List.map (constraint ∘ inj₁)) otherBindings
+    -- Body literals are renamed (so their internal vars don't
+    -- collide) and then substituted by varBindings.
+    ++ Data.List.map (applyToBody varBindings)
+         (Data.List.map (incrementLiteral (suc n)) l)
 
 equalFunctor : 
   {Atom : Set}
