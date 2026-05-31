@@ -31,6 +31,7 @@ joinWith sep = foldr step ""
     step x "" = x
     step x acc = x ++ sep ++ acc
 
+-- default outputFormatter that returns relevant variable bindings in string form.
 formatOutput :
   ∀ {𝒞 Code Constraint}
   → (shouldGround : Bool)

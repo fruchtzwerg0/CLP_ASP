@@ -8,18 +8,16 @@ open import Data.List hiding (_++_)
 open import Data.String hiding (_≟_)
 open import Data.Product
 open import Function.Base
-
 open import Relation.Nullary
 open import Relation.Nullary.Decidable as Decidable
 open import Relation.Binary.PropositionalEquality
-
 open import Generics
 open import CLP.ftUtilsDerivation
 open import CLP.types
 
 data ListLogic (A : Set) : Set where
-  []  : ListLogic A
-  _∷_ : A → ListLogic A → ListLogic A
+  []      : ListLogic A
+  _∷_     : A → ListLogic A → ListLogic A
   varList : ℕ → ListLogic A
 
 listD : HasDesc ListLogic
@@ -36,15 +34,50 @@ instance  showℕ : Show ℕ
 
 instance  makeVarList : ∀ {A} → MakeVar (ListLogic A)
           makeVarList .fresh = varList
-          makeVarList .new = varList 0
+          makeVarList .new   = varList 0
 
 instance  unifyDisunifyℕ : FTUtils ℕ
           unifyDisunifyℕ = deriveFTUtils ℕD
 
-instance  ftUtilsList : ∀ {A} → ⦃ FTUtils A ⦄ → FTUtils (ListLogic A)
-          ftUtilsList = deriveFTUtils listD
+-- ----------------------------------------------------------------
+-- Manual FTUtils for ListLogic.
+--
+-- Parameterized in A via instance arg.  The cons case
+-- conjuncts/concatenates element FTUtils with recursive call on
+-- the tail.  varList returns its index.
+-- ----------------------------------------------------------------
+instance ftUtilsList :
+           ∀ {A} → ⦃ FTUtils A ⦄ → FTUtils (ListLogic A)
 
-foldList = deriveFold listD
+         ftUtilsList .functor []          = "[]"
+         ftUtilsList .functor (_ ∷ _)     = "∷"
+         ftUtilsList .functor (varList _) = "varList"
+
+         ftUtilsList .varName (varList n) = just n
+         ftUtilsList .varName _           = nothing
+
+         ftUtilsList              .occurs _ []          = false
+         ftUtilsList ⦃ fA ⦄       .occurs n (a ∷ as)    = occurs ⦃ fA ⦄ n a ∨ occurs ⦃ ftUtilsList ⦃ fA ⦄ ⦄ n as
+         ftUtilsList              .occurs n (varList m) = n ≡ᵇ m
+
+         ftUtilsList              .collectVars []          = []
+         ftUtilsList ⦃ fA ⦄       .collectVars (a ∷ as)    = collectVars ⦃ fA ⦄ a Data.List.++ collectVars ⦃ ftUtilsList ⦃ fA ⦄ ⦄ as
+         ftUtilsList              .collectVars (varList n) = n ∷ []
+
+         ftUtilsList .getNat _ = nothing
+
+-- ----------------------------------------------------------------
+-- Manual fold for ListLogic.
+-- ----------------------------------------------------------------
+foldList :
+  ∀ {A B : Set}
+  → B                  -- []
+  → (A → B → B)        -- ∷
+  → (ℕ → B)            -- varList
+  → ListLogic A → B
+foldList fn fc fv []          = fn
+foldList fn fc fv (a ∷ as)    = fc a (foldList fn fc fv as)
+foldList fn fc fv (varList n) = fv n
 
 instance  decList : ∀ {A} → ⦃ DecEq A ⦄ → DecEq (ListLogic A)
           decList = deriveDecEq listD
@@ -87,6 +120,9 @@ zipMatchList c (a ∷ b) (x ∷ y) = just ((_:-:_ c (a =ℒ x)) ∷ [] , (b =ℒ
 zipMatchList _ [] [] = just ([] , [])
 zipMatchList _ _ _ = nothing
 
+-- Direct (non-fold) implementation of incrementList.
 {-# TERMINATING #-}
 incrementList : ∀ {A} → (ℕ → A → A) → ℕ → ListLogic A → ListLogic A
-incrementList inc x = foldList [] (λ a b → inc x a ∷ b) (λ y → varList (x + y))
+incrementList inc x []          = []
+incrementList inc x (a ∷ as)    = inc x a ∷ incrementList inc x as
+incrementList inc x (varList n) = varList (x + n)

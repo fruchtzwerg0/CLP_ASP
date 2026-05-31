@@ -50,12 +50,50 @@ data Functor : Set where
 functorD : HasDesc Functor
 functorD = deriveDesc Functor
 
--- we need to derive ftUtils for our atom type
-instance  ftUtilsFunctor : FTUtils Functor
-          ftUtilsFunctor = deriveFTUtils functorD
-
 -- a fold to be used for increment later.
 foldFunctor = deriveFold functorD
+
+-- ----------------------------------------------------------------
+-- Manual FTUtils for Functor.
+--
+-- Replaces deriveFTUtils with hand-written instances.  Each
+-- method delegates to ftUtilsFD on FD-typed args, ftUtilsString
+-- on StringLogic-typed args, and recurses for fnot.  Avoids
+-- the massive generic-derivation expansion.
+-- ----------------------------------------------------------------
+instance ftUtilsFunctor : FTUtils Functor
+
+         ftUtilsFunctor .functor (fnot x)            = functor ⦃ ftUtilsFunctor ⦄ x
+         ftUtilsFunctor .functor (hanoi _ _)         = "hanoi"
+         ftUtilsFunctor .functor (move _ _ _)        = "move"
+         ftUtilsFunctor .functor (move0 _ _ _ _ _ _) = "move0"
+         ftUtilsFunctor .functor (negmove _ _ _)     = "negmove"
+         ftUtilsFunctor .functor ffalse              = "ffalse"
+
+         ftUtilsFunctor .varName _ = nothing
+
+         ftUtilsFunctor .occurs n (fnot x)            = occurs ⦃ ftUtilsFunctor ⦄ n x
+         ftUtilsFunctor .occurs n (hanoi a b)         = occurs ⦃ ftUtilsFD ⦄ n a ∨ occurs ⦃ ftUtilsFD ⦄ n b
+         ftUtilsFunctor .occurs n (move a b c)        = occurs ⦃ ftUtilsString ⦄ n a ∨ occurs ⦃ ftUtilsString ⦄ n b ∨ occurs ⦃ ftUtilsFD ⦄ n c
+         ftUtilsFunctor .occurs n (move0 a b c d e f) =
+           occurs ⦃ ftUtilsFD ⦄ n a ∨ occurs ⦃ ftUtilsFD ⦄ n b ∨ occurs ⦃ ftUtilsFD ⦄ n c ∨
+           occurs ⦃ ftUtilsString ⦄ n d ∨ occurs ⦃ ftUtilsString ⦄ n e ∨ occurs ⦃ ftUtilsString ⦄ n f
+         ftUtilsFunctor .occurs n (negmove a b c)     = occurs ⦃ ftUtilsString ⦄ n a ∨ occurs ⦃ ftUtilsString ⦄ n b ∨ occurs ⦃ ftUtilsFD ⦄ n c
+         ftUtilsFunctor .occurs _ ffalse              = false
+
+         ftUtilsFunctor .collectVars (fnot x)            = collectVars ⦃ ftUtilsFunctor ⦄ x
+         ftUtilsFunctor .collectVars (hanoi a b)         =
+           collectVars ⦃ ftUtilsFD ⦄ a Data.List.++ collectVars ⦃ ftUtilsFD ⦄ b
+         ftUtilsFunctor .collectVars (move a b c)        =
+           collectVars ⦃ ftUtilsString ⦄ a Data.List.++ collectVars ⦃ ftUtilsString ⦄ b Data.List.++ collectVars ⦃ ftUtilsFD ⦄ c
+         ftUtilsFunctor .collectVars (move0 a b c d e f) =
+           collectVars ⦃ ftUtilsFD ⦄ a Data.List.++ collectVars ⦃ ftUtilsFD ⦄ b Data.List.++ collectVars ⦃ ftUtilsFD ⦄ c Data.List.++
+           collectVars ⦃ ftUtilsString ⦄ d Data.List.++ collectVars ⦃ ftUtilsString ⦄ e Data.List.++ collectVars ⦃ ftUtilsString ⦄ f
+         ftUtilsFunctor .collectVars (negmove a b c)     =
+           collectVars ⦃ ftUtilsString ⦄ a Data.List.++ collectVars ⦃ ftUtilsString ⦄ b Data.List.++ collectVars ⦃ ftUtilsFD ⦄ c
+         ftUtilsFunctor .collectVars ffalse              = []
+
+         ftUtilsFunctor .getNat _ = nothing
 
 -- custom validation scheme, that can be used to restrict the user from certain constructions that would typecheck.
 -- in ASP, we could use it to restrict fnot only to be used in the body, and ffalse only in the head.
@@ -121,7 +159,7 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
               (λ a b c → negmove (apply valueUtils c₀ string𝒞 n z a) (apply valueUtils c₀ string𝒞 n z b) (apply valueUtils c₀ fd𝒞 n z c))
               ffalse
 
--- the streamreasoning example taken from "Constraint Answer Set Programming without Grounding"
+-- the Towers of Hanoi example taken from "Constraint Answer Set Programming without Grounding"
 module program where
   open CLP.types
 
@@ -155,16 +193,29 @@ module program where
     move Pi Pf T :- not (negmove Pi Pf T) •ₐ
     negmove Pi Pf T :- not (move Pi Pf T) •ₐ
 
-  question :
+  question1 :
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
-  question = 
+  question1 = 
+    hanoi (＃ (pos 3)) (varFD 0) •ₐ
+
+  question2 :
+    Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  question2 = 
+    hanoi (＃ (pos 4)) (varFD 0) •ₐ
+
+  question3 :
+    Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  question3 = 
     hanoi (＃ (pos 5)) (varFD 0) •ₐ
 
-  execute = (take 1 ∘ aspExecute hanoiProgram question) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
+  execute1 = (take 1 ∘ aspExecute hanoiProgram question1) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
 
+  execute2 = (take 1 ∘ aspExecute hanoiProgram question2) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
+
+  execute3 = (take 1 ∘ aspExecute hanoiProgram question3) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
+
+  {-# COMPILE GHC execute1 as hExecute1 #-}
   
-  {-# COMPILE GHC execute as execute #-}
+  {-# COMPILE GHC execute2 as hExecute2 #-}
   
-  real = (toIntern  ∘ proj₂ ∘ applyVars hanoiProgram) 0
-  getDuals = computeDuals real
-  getNmr = computeNMR real
+  {-# COMPILE GHC execute3 as hExecute3 #-}

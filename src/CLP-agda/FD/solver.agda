@@ -37,7 +37,7 @@ data Constraint : Set where
 Store : Set
 Store = List Constraint
 
--- Agda Binding record mirrors the new Haskell type
+-- Agda Binding record mirrors the Haskell type
 record Binding : Set where
   constructor MkBinding
   field

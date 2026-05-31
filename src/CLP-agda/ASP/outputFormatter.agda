@@ -25,12 +25,14 @@ open import CLP.outputFormatter
 
 open import ASP.dual
 
+-- Render a modifier prefix string
 showModifier :
   Modifier → String
 showModifier chsMod = "CHS "
 showModifier provenMod = "PROVEN "
 showModifier noneMod = ""
 
+-- Show a Maybe atom, rendering nothing as the empty string
 showMaybe : 
   {Atom : Set}
   → ⦃ Show Atom ⦄
@@ -39,6 +41,7 @@ showMaybe :
 showMaybe nothing = ""
 showMaybe ⦃ sh ⦄ (just x) = Generics.show ⦃ sh ⦄ x
 
+-- Substitute all variable positions in an atom using the constraint bindings
 groundAtom :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ AtomUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint ⦄
@@ -53,6 +56,7 @@ groundAtom {Atom}{C}{Code}{Constraint} ⦃ aspAt ⦄ constraints at =
   foldr substituteOne at 
     ((filterᵇ (λ { (_:-:_ _ x) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom) at)
   where
+    -- Replace variable nam with the bound value found in constraints
     substituteOne : Σᵢ C Code Code Constraint 
                   → ASPAtom Atom C Code Constraint 
                   → ASPAtom Atom C Code Constraint
@@ -64,6 +68,7 @@ groundAtom {Atom}{C}{Code}{Constraint} ⦃ aspAt ⦄ constraints at =
     ...   | just (inj₁ (_:-:_ c′ (_ , y))) = apply aspAt c′ nam y acc
     ...   | just (inj₂ (_:-:_ c′ (_ , y))) = apply aspAt c′ nam y acc
 
+-- Format one justification node as an indented line with its modifier prefix
 addToJustification : 
   ∀ {Atom 𝒞 Code Constraint}
   → Modifier
@@ -81,6 +86,7 @@ addToJustification {_}{C}{Code}{Constraint} modif n at ⦃ sh ⦄ ⦃ inst ⦄ �
   "\n" Data.String.++ (Data.String.concat ∘ replicate n) " " Data.String.++ showModifier modif Data.String.++ 
   (Generics.show ⦃ sh ⦄ ∘ groundAtom constraints) at
 
+-- Render a justification tree to a string, incrementing indent depth at each level
 {-# TERMINATING #-}
 showJustification : 
   ∀ {Atom 𝒞 Code Constraint}
@@ -97,6 +103,8 @@ showJustification :
 showJustification n bindings (node (con , modif , at) ys) = 
   addToJustification modif n at bindings ++ (joinWith "" ∘ Data.List.map (showJustification (suc n) bindings)) ys 
 
+-- Format a full answer set result: justification tree and CHS atoms.
+-- Returns "unsat" if no solution is present.
 aspFormat : 
   ∀ {Atom 𝒞 Code Constraint}
   → (ASPAtom Atom 𝒞 Code Constraint → Bool)
@@ -111,14 +119,11 @@ aspFormat :
   → String
 aspFormat {Atom}{C}{Code}{Constraint} showAtom ⦃ inst ⦄ ⦃ sho ⦄ ((_ , chs , _ , justification) , (constraints ∷ _)) =
   "\nJustification:\n" ++ (joinWith "\n" ∘ Data.List.map (showJustification 0 constraints)) justification ++
-  "\nModel:\n" ++ (joinWith ", " ∘
+  "\nCHS:\n" ++ (joinWith ", " ∘
               dedupStrings ∘
               Data.List.map (Generics.show ⦃ sho ⦄ ∘ groundAtom constraints) ∘ filterᵇ showAtom) chs
   where
-    -- After grounding, two chs entries that originally had
-    -- different fresh var IDs may render to the same display
-    -- string.  We dedup at display time so the printed CHS
-    -- doesn't contain visually-identical entries.
+    -- Remove duplicate strings, keeping the last occurrence
     dedupStrings : List String → List String
     dedupStrings []       = []
     dedupStrings (x ∷ xs) =

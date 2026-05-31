@@ -14,7 +14,6 @@ open import CLP.types
 open import Function.Base
 
 -- AST used for ASP. Wraps atoms and gives them additional information that can be retrieved by the ASP parameterization.
-
 data ASPAtom (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   wrap : Atom → ℕ → List (Σᵢ 𝒞 Code Code Constraint) → ASPAtom Atom 𝒞 Code Constraint
   forAll : Σᵢ 𝒞 Code Code Constraint → ASPAtom Atom 𝒞 Code Constraint → ASPAtom Atom 𝒞 Code Constraint
@@ -22,7 +21,6 @@ data ASPAtom (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (�
   chk : ℕ → ℕ → List (Σᵢ 𝒞 Code Code Constraint) → ASPAtom Atom 𝒞 Code Constraint
 
 -- Utilities that users need to implement for their atom type when planning to use ASP.
-
 record ASPUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   field
     isNot : Atom → Bool
@@ -31,10 +29,12 @@ record ASPUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : 
     toggle : Atom → Atom
 open ASPUtils ⦃...⦄ public
 
+-- Modifier differentiates between 3 different derivation methods in the justification
 data Modifier : Set where
   chsMod : Modifier
   provenMod : Modifier
   noneMod : Modifier
 
+-- Abstract tree datatype
 data Tree (A : Set) : Set where
   node : A → List (Tree A) → Tree A

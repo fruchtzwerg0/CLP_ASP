@@ -24,7 +24,7 @@ open import Effect.Monad using (RawMonad)
 open import Agda.Builtin.String
 open import Agda.Builtin.Unit
 
-
+-- Equality and disequality constraints over a term type A
 data ℒ (A : Set) : Set where
   _=ℒ_ : A → A → ℒ A
   _≠ℒ_ : A → A → ℒ A
@@ -32,24 +32,27 @@ data ℒ (A : Set) : Set where
 infixr 80 _=ℒ_
 infixr 80 _≠ℒ_
 
+-- A constraint tagged as either the default or its dual
 data Dual (A : Set) : Set where
   default : A → Dual A
   dual : A → Dual A
 
--- ---------------------------------------------------------------------
-
+-- Typeclass for generating fresh variables
 record MakeVar {l} (A : Set l) : Set l where
   field
     fresh : ℕ → A
     new : A
 open MakeVar ⦃...⦄ public
 
+-- Marks whether an atom appears in a rule head or body
 data Where : Set where
   headOfRule : Where
   bodyOfRule : Where
 
+-- Forward declaration needed by ConstraintUtils and ValueUtils
 record Σᵢ (A : Set) (B : A → Set) (Code : A → Set) (Cns : A → Set) : Set
 
+-- Operations on user-defined constraint types
 record ConstraintUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   field
     zipMatch : (c : 𝒞) → Constraint c → Constraint c → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
@@ -57,6 +60,7 @@ record ConstraintUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 
     apply : (c₀ : 𝒞) → (c₁ : 𝒞) → ℕ → Code c₀ → Constraint c₁ → Constraint c₁
 open ConstraintUtils ⦃...⦄ public
 
+-- Operations on solver-domain value types (terms/codes)
 record ValueUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   field
     zipMatch : (c : 𝒞) → Code c → Code c → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
@@ -64,6 +68,7 @@ record ValueUtils (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → S
     apply : (c₀ : 𝒞) → (c₁ : 𝒞) → ℕ → Code c₀ → Code c₁ → Code c₁
 open ValueUtils ⦃...⦄ public
 
+-- A solver-tagged value: pairs a solver id with a payload of that solver's type
 record Σᵢ A B Code Cns where
   constructor _:-:_
   field
@@ -77,6 +82,7 @@ record Σᵢ A B Code Cns where
     ⦃ showCns ⦄ : Show (Cns code)
 open Σᵢ public
 
+-- Operations on atom types (used for zipMatch, substitution, increment)
 record AtomUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set where
   field
     zipMatch : Atom → Atom → (Maybe ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint)
@@ -84,6 +90,7 @@ record AtomUtils (Atom : Set) (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint :
     apply : (c : 𝒞) → ℕ → Code c → Atom → Atom
 open AtomUtils ⦃...⦄ public
 
+-- A value paired with an FTUtils instance for its type
 record _×ᵢ_ (A : Set) (B : Set) : Set where
   constructor _<ᵢ
   field
@@ -91,6 +98,7 @@ record _×ᵢ_ (A : Set) (B : Set) : Set where
     ⦃ inst ⦄ : FTUtils B
 open _×ᵢ_ public
 
+-- A rule body literal: either an atom or a mixed constraint
 data Literal 
   (A : Set)
   (𝒞 : Set) 
@@ -99,6 +107,7 @@ data Literal
   atom : ⦃ FTUtils A ⦄ → ⦃ AtomUtils A 𝒞 Code Constraint ⦄ → A → Literal A 𝒞 Code Constraint
   constraint : (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint) → Literal A 𝒞 Code Constraint
 
+-- A typed rule body: a snoc-list of atom–value pairs and constraints
 data Body 
   (A : Set) 
   (val : A → Set)
@@ -112,6 +121,7 @@ data Body
   constr : (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)  
             → Body A val 𝒞 Code Constraint → Body A val 𝒞 Code Constraint
 
+-- Flatten a Body into a plain List of Literals
 toLiteralList : ∀ {Atom val 𝒞 Code Constraint} → Body Atom val 𝒞 Code Constraint → List (Literal Atom 𝒞 Code Constraint)
 toLiteralList (end a _) = atom a ∷ []
 toLiteralList (endst c) = constraint c ∷ []
@@ -125,6 +135,7 @@ pattern _↪_• code x = endst (inj₂ (code :-: x))
 pattern _↣_∧_ code x y = constr (inj₁ (code :-: x)) y
 pattern _↪_∧_ code x y = constr (inj₂ (code :-: x)) y
 
+-- A compiled clause: head atom with a flat literal body
 record ClauseI
   (Atom : Set) 
   (𝒞 : Set) 
@@ -137,6 +148,7 @@ record ClauseI
     ⦃ inst ⦄ : FTUtils Atom
     ⦃ instAt ⦄ : AtomUtils Atom 𝒞 Code Constraint
 
+-- Surface syntax for rules: facts, rules with bodies, sequencing, and variable binding
 data Clause 
   (A : Set) 
   (val : Where → A → Set)
@@ -156,6 +168,7 @@ data Clause
 
   _>>=_ : {B : Set} → ⦃ MakeVar B ⦄ → B → (B → Clause A val 𝒞 Code Constraint) → Clause A val 𝒞 Code Constraint
 
+-- Compile surface Clause syntax to a list of ClauseI
 toIntern : ∀ {Atom val 𝒞 Code Constraint} → Clause Atom val 𝒞 Code Constraint → List (ClauseI Atom 𝒞 Code Constraint)
 toIntern (fact a _) = a :-- [] ∷ []
 toIntern (rule a _ xs) = a :-- toLiteralList xs ∷ []
@@ -175,6 +188,7 @@ infixr 50 _↣_∧_
 
 infix 30 _:-_
 
+-- Resolve >>= binders into fresh variable ids, threading a counter
 applyVars
   : ∀ {A val 𝒞 Code Constraint}
   → Clause A val 𝒞 Code Constraint
@@ -193,6 +207,7 @@ applyVars (_>>=_ {B} x k) c =
       (c'' , r) = applyVars result c'
   in c'' , r
 
+-- Interface for a constraint solver for one solver domain c
 record Solver (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set₁ where
   field
     solve : 
@@ -211,6 +226,7 @@ record Solver (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set))
      → List (List (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint) × A)
 open Solver ⦃...⦄ public
 
+-- Interface for grounding (extracting variable bindings from constraints)
 record Grounder (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set₁ where
   field
     ground : 
@@ -228,6 +244,7 @@ record Grounder (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set
      → List ((ℕ × Code c) ⊎ (ℕ × Code c)) × A
 open Grounder ⦃...⦄ public
 
+-- Interface for scheduling constraint propagation across solvers
 record Scheduler (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Set)) : Set₁ where
   field
     schedule :
@@ -240,23 +257,22 @@ record Scheduler (𝒞 : Set) (Code : (𝒞 → Set)) (Constraint : (𝒞 → Se
      → (List ∘ List) (Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint ⊎ Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)
 open Scheduler ⦃...⦄ public
 
--- Generic type for Substitutions (Output of the solver).
+-- Output of the solver: a list of variable-to-Σᵢ bindings
 Subst : (𝒞 : Set) → (Code : (𝒞 → Set)) → (Constraint : (𝒞 → Set)) → Set
 Subst C code cns = List (ℕ × (Σᵢ C code code cns))
 
--- Generic universe codes for entities that have variables.
--- Extensively used by the utilities.
+-- Universe of syntactic categories that carry variables
 data HasVariables : Set where
   domainConstraint   : HasVariables
-  genericConstraint   : HasVariables
-  mixedConstraint   : HasVariables
-  atom        : HasVariables
-  literal     : HasVariables
-  clause      : HasVariables
-  listOf      : HasVariables → HasVariables
-  domainExpr  : HasVariables
+  genericConstraint  : HasVariables
+  mixedConstraint    : HasVariables
+  atom               : HasVariables
+  literal            : HasVariables
+  clause             : HasVariables
+  listOf             : HasVariables → HasVariables
+  domainExpr         : HasVariables
 
--- Decoding function for HasVariables
+-- Decode a HasVariables tag to its corresponding Agda type
 ⟦_,_,_,_,_⟧ᵥ :
   (𝒞 : Set)
   → (Code : (𝒞 → Set))

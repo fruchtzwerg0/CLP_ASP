@@ -1,6 +1,8 @@
 {-# OPTIONS --safe #-}
 module CLP.ftUtilsDerivation where
 
+-- generic derivation of occurs, collectVars and isVar
+
 open import Generics.Prelude hiding (lookup)
 open import Generics.Telescope
 open import Generics.Desc

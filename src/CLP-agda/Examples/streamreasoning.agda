@@ -149,25 +149,3 @@ module program where
 
   realStream = (toIntern  ∘ proj₂ ∘ applyVars streamReasoning) 0
   execute = (head ∘ aspExecute streamReasoning) question
-
-  getDuals = computeDuals realStream
-  normalizee = ((groupByKey ClauseI.head (λ x → is-just ∘ zipMatch aspAtom x)) ∘ Data.List.map normalize) realStream
-  normalizeee = computeDual (λ at n l → wrap (ASP.types.not at) n l) (λ x → wrap x 0 []) forAll ((incompt (var⊎ 7) (var⊎ 8) :--
-      (constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (p (varBool 6) =ℒ var⊎ 7))) ∷
-      constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (q (varBool 6) =ℒ var⊎ 8))) ∷
-      []))
-    ∷
-    (incompt (var⊎ 7) (var⊎ 8) :--
-      (constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (q (varBool 6) =ℒ var⊎ 7))) ∷
-      constraint (inj₁ (⊎𝒞 Bool𝒞 Bool𝒞 :-: (p (varBool 6) =ℒ var⊎ 8))) ∷
-      []))
-    ∷ [])
-  exif = existentialVars (validStream (varFD 0) (var⊎ 1) :--
-    (atom (stream (varFD 0) (var⊎ 1)) ∷
-    atom (fnot (cancelled (varFD 0) (var⊎ 1))) ∷ []))
-  zmatch = zipMatchRecursive ((FD𝒞 :-: (＃ pos 0)) ∷ [])
-  varTest = varName (varFD 0)
-  --hormalize = ASP.dual.equal (FD𝒞 :-: (varFD 0)) (FD𝒞 :-: (＃ (pos 3)))
-  collectVaff = collectVarsᵥ My𝒞 ⟦_⟧ ⟦_⟧ℒ realStream
-  getOlon = findOLON realStream
-  getNmr = computeNMR realStream

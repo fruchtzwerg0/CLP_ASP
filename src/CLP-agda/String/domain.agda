@@ -7,13 +7,12 @@ open import Data.String
 open import Data.Maybe
 open import Data.List
 open import Function.Base
-
 open import Generics
 open import CLP.ftUtilsDerivation
 open import CLP.types
 
 data StringLogic : Set where
-  ~_ : String → StringLogic
+  ~_       : String → StringLogic
   varString : ℕ → StringLogic
 
 stringD : HasDesc StringLogic
@@ -30,7 +29,7 @@ instance  showℕ : Show ℕ
 
 instance  makeVarString : MakeVar StringLogic
           makeVarString .fresh = varString
-          makeVarString .new = varString 0
+          makeVarString .new   = varString 0
 
 instance  unifyDisunifyℕ : FTUtils ℕ
           unifyDisunifyℕ = deriveFTUtils ℕD
@@ -42,29 +41,55 @@ instance  showStrin : Show String
           showStrin .Generics.show = id
 
 instance  ftUtilsStrin : FTUtils String
-          ftUtilsStrin .functor = id
-          ftUtilsStrin .varName _ = nothing
-          ftUtilsStrin .occurs _ _ = false
+          ftUtilsStrin .functor       = id
+          ftUtilsStrin .varName _     = nothing
+          ftUtilsStrin .occurs _ _    = false
           ftUtilsStrin .collectVars _ = []
-          ftUtilsStrin .getNat _ = nothing
+          ftUtilsStrin .getNat _      = nothing
 
-instance  ftUtilsString : FTUtils StringLogic
-          ftUtilsString = deriveFTUtils stringD
+-- Manual FTUtils for StringLogic.
+instance ftUtilsString : FTUtils StringLogic
+         -- The "functor" is a textual identifier for the
+         -- top-level constructor.  For a ground string we use
+         -- the string itself; for a variable we tag it.
+         ftUtilsString .functor (~ s)         = s
+         ftUtilsString .functor (varString n) = "varString"
 
-foldString = deriveFold stringD
+         ftUtilsString .varName (~ _)         = nothing
+         ftUtilsString .varName (varString n) = just n
 
-instance  decString : DecEq StringLogic
-          decString = deriveDecEq stringD
+         ftUtilsString .occurs _ (~ _)         = false
+         ftUtilsString .occurs n (varString m) = n ≡ᵇ m
 
-instance  showString : Show StringLogic
-          showString = deriveShow stringD
+         ftUtilsString .collectVars (~ _)         = []
+         ftUtilsString .collectVars (varString n) = n ∷ []
 
+         ftUtilsString .getNat _ = nothing
+
+instance decString : DecEq StringLogic
+         decString = deriveDecEq stringD
+
+instance showString : Show StringLogic
+         showString = deriveShow stringD
+
+-- Manual fold for StringLogic.
+foldString :
+  ∀ {A : Set}
+  → (String → A)         -- ground string
+  → (ℕ → A)              -- varString
+  → StringLogic → A
+foldString f₁ f₂ (~ s)         = f₁ s
+foldString f₁ f₂ (varString n) = f₂ n
+
+-- Direct (non-fold) implementations of applyString
 applyString : ℕ → StringLogic → StringLogic → StringLogic
-applyString x subst = foldString ~_ (λ y → if x ≡ᵇ y then subst else (varString y))
+applyString x subst (~ s)         = ~ s
+applyString x subst (varString n) = if x ≡ᵇ n then subst else varString n
 
 zipMatchString : StringLogic → StringLogic → (Maybe ∘ List ∘ ℒ) StringLogic
 zipMatchString (~ x) (~ y) = if x == y then just [] else nothing
-zipMatchString _ _ = nothing
+zipMatchString _ _         = nothing
 
 incrementString : ℕ → StringLogic → StringLogic
-incrementString x = foldString ~_ (λ y → varString (x + y))
+incrementString x (~ s)         = ~ s
+incrementString x (varString n) = varString (x + n)

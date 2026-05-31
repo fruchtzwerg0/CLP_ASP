@@ -22,7 +22,7 @@ data Binding = MkBinding { var :: Integer, val :: Integer } deriving (Show, Eq)
 type Store   = [Constraint]
 
 data Expr
-  = Lit Integer | Var Integer         -- Var now holds an Integer index
+  = Lit Integer | Var Integer
   | Add Expr Expr | Sub Expr Expr | Mul Expr Expr | Div Expr Expr
   deriving Show
 
@@ -31,21 +31,15 @@ data Constraint
   | Geq Expr Expr | Eq Expr Expr | Neq Expr Expr
   deriving Show
 
--- ── var name encoding ─────────────────────────────────────────────────────────
-
--- Integer index → Prolog variable name  (must start with uppercase)
 varName :: Integer -> String
 varName n = "Var" ++ show n
 
--- Prolog variable name → Integer index  ("Var42" → Just 42)
 parseVarName :: String -> Maybe Integer
 parseVarName s
   | take 3 s == "Var" = case reads (drop 3 s) of
       [(n, "")] -> Just n
       _         -> Nothing
   | otherwise = Nothing
-
--- ── solver process ────────────────────────────────────────────────────────────
 
 data SolverProcess = SolverProcess
   { solverIn  :: Handle
@@ -56,6 +50,7 @@ solverRef :: IORef (Maybe SolverProcess)
 solverRef = unsafePerformIO (newIORef Nothing)
 {-# NOINLINE solverRef #-}
 
+-- builds the solver process if it isn't already running, and returns it
 getSolver :: IO SolverProcess
 getSolver = do
   ms <- readIORef solverRef
@@ -97,8 +92,6 @@ getSolver = do
       --hPutStrLn stderr "[DEBUG] swipl ready."
       return s
 
--- ── I/O helpers ───────────────────────────────────────────────────────────────
-
 drainUntil :: Handle -> String -> IO [String]
 drainUntil h sentinel = go []
   where
@@ -109,16 +102,16 @@ drainUntil h sentinel = go []
         then return (reverse (line : acc))
         else go (line : acc)
 
--- ── rendering ─────────────────────────────────────────────────────────────────
-
+-- shows expressions so that the fd-solver can understand them
 renderExpr :: Expr -> String
 renderExpr (Lit n)   = show n
-renderExpr (Var n)   = varName n          -- Integer → "VarN"
+renderExpr (Var n)   = varName n
 renderExpr (Add a b) = "(" ++ renderExpr a ++ "+"  ++ renderExpr b ++ ")"
 renderExpr (Sub a b) = "(" ++ renderExpr a ++ "-"  ++ renderExpr b ++ ")"
 renderExpr (Mul a b) = "(" ++ renderExpr a ++ "*"  ++ renderExpr b ++ ")"
 renderExpr (Div a b) = "(" ++ renderExpr a ++ "//" ++ renderExpr b ++ ")"
 
+-- shows constraints so that the fd-solver can understand them
 renderConstraint :: Constraint -> String
 renderConstraint (Lt  a b) = renderExpr a ++ " #< "   ++ renderExpr b
 renderConstraint (Gt  a b) = renderExpr a ++ " #> "   ++ renderExpr b
@@ -126,8 +119,6 @@ renderConstraint (Leq a b) = renderExpr a ++ " #=< "  ++ renderExpr b
 renderConstraint (Geq a b) = renderExpr a ++ " #>= "  ++ renderExpr b
 renderConstraint (Eq  a b) = renderExpr a ++ " #= "   ++ renderExpr b
 renderConstraint (Neq a b) = renderExpr a ++ " #\\= " ++ renderExpr b
-
--- ── variable collection ───────────────────────────────────────────────────────
 
 -- Collect unique Integer indices from all Var nodes
 collectVarIds :: Store -> [Integer]
@@ -146,8 +137,7 @@ collectVarIds = nub . concatMap cvC
     cvE (Mul a b) = cvE a ++ cvE b
     cvE (Div a b) = cvE a ++ cvE b
 
--- ── query building ────────────────────────────────────────────────────────────
-
+-- builds the query out of a store
 buildQuery :: Store -> [Integer] -> String -> String
 buildQuery store varIds mode =
   let constraints = intercalate ", " (map renderConstraint store)
@@ -162,9 +152,7 @@ buildQuery store varIds mode =
         _     -> intercalate ", " [domainGoal, constraints, labelGoal, printGoals]
   in "( " ++ body ++ " -> write('__SAT__') ; write('__UNSAT__') ), write('__END__'), nl."
 
--- ── parsing ───────────────────────────────────────────────────────────────────
-
--- Parse "Var42=7" → Just (MkBinding 42 7)
+-- parses the output of the store to the internal binding representation
 parseBinding :: String -> Maybe Binding
 parseBinding s = case break (== '=') s of
   (v, '=' : rest) ->
@@ -173,8 +161,7 @@ parseBinding s = case break (== '=') s of
       _                     -> Nothing
   _ -> Nothing
 
--- ── running ───────────────────────────────────────────────────────────────────
-
+-- runs the query to the solver with a given store
 runQuery :: Store -> String -> IO (Bool, [Binding])
 runQuery store mode = do
   let varIds = collectVarIds store
@@ -194,9 +181,11 @@ runQuery store mode = do
                     else []
   return (sat, bindings)
 
+-- runs the solver with the store
 isSatisfiable :: Store -> IO Bool
 isSatisfiable store = fst <$> runQuery store "sat"
 
+-- runs the labeling metapredicate of the fd-solver
 labeling :: Store -> IO (Maybe [Binding])
 labeling store = do
   (sat, bindings) <- runQuery store "label"

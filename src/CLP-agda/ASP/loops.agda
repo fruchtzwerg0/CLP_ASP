@@ -32,8 +32,6 @@ open import CLP.outputFormatter
 open import ASP.dual
 open import ASP.cforall
 
--- FTUtils needs to be implemented also for ASPAtom
-
 occursExi : 
   ∀ {𝒞 Code Constraint}
   → ℕ 
@@ -47,6 +45,7 @@ collectVarsExi :
   → List ℕ
 collectVarsExi (_:-:_ c x) = collectVars x
 
+-- FTUtils needs to be implemented also for ASPAtom
 instance aspFT : ∀ {Atom 𝒞 Code Constraint} → ⦃ FTUtils Atom ⦄ → FTUtils (ASPAtom Atom 𝒞 Code Constraint)
          aspFT .functor (wrap at _ _) = functor at
          aspFT .functor (forAll _ _) = "forAll"
@@ -95,7 +94,6 @@ zipMatchExi ((_:-:_ c₀ x ⦃ ft ⦄ ⦃ val ⦄ ⦃ dec ⦄ ⦃ va ⦄ ⦃ sho
 ... | no _ = nothing
 
 -- AtomUtils needs to be implemented for ASPAtom
-
 instance aspAtom : ∀ {Atom 𝒞 Code Constraint} 
                    → ⦃ DecEq 𝒞 ⦄
                    → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄ 
@@ -123,7 +121,6 @@ instance aspAtom : ∀ {Atom 𝒞 Code Constraint}
          aspAtom .apply c n z (chk a b x) = chk a b (Data.List.map (applyExi c n z) x)
 
 -- ASPUtils needs to be implemented for ASPAtom
-
 instance  aspAtomUtils : ∀ {Atom 𝒞 Code Constraint} → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄ → ASPUtils (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint
           aspAtomUtils .ASP.types.not (wrap at a b) = wrap (ASP.types.not at) a b
           aspAtomUtils .ASP.types.not (forAll a b) = forAll a (ASP.types.not b)
@@ -133,8 +130,7 @@ instance  aspAtomUtils : ∀ {Atom 𝒞 Code Constraint} → ⦃ ASPUtils Atom �
           aspAtomUtils .isNot (forAll a b) = isNot b
           aspAtomUtils .isNot nmrCheck = false
           aspAtomUtils .isNot (chk a b c) = true
-          aspAtomUtils .ASP.types.isFalse (wrap at _ _) = true --ASP.types.isFalse at
-          aspAtomUtils .ASP.types.isFalse _ = true --false
+          aspAtomUtils .ASP.types.isFalse _ = true
           aspAtomUtils .toggle (wrap at a b) = wrap (toggle at) a b
           aspAtomUtils .toggle (forAll a b) = forAll a (toggle b)
           aspAtomUtils .toggle nmrCheck = nmrCheck
@@ -160,39 +156,35 @@ mod n m with compare n m
 ... | _ = mod (n ∸ m) m
 
 -- Checks the CHS for already proven atoms.
-private
-  entails :
-    ∀ {𝒞 Code Constraint}
-    → ⦃ DecEq 𝒞 ⦄
-    → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-    → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
-    → ⦃ Solver 𝒞 Code Constraint ⦄
-    → ⦃ Scheduler 𝒞 Code Constraint ⦄
-    → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-    → ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-    → Bool
-  entails store c = null (schedule (negateConstraint c ∷ []) store)
- 
-  -- A unification is an exact match iff every constraint it
-  -- introduces is already entailed by the store.
-  isExactMatch :
-    ∀ {𝒞 Code Constraint}
-    → ⦃ DecEq 𝒞 ⦄
-    → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-    → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
-    → ⦃ Solver 𝒞 Code Constraint ⦄
-    → ⦃ Scheduler 𝒞 Code Constraint ⦄
-    → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-    → List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))
-    → Bool
-  isExactMatch store unif =
-    all (λ c → entails store (inj₁ c)) unif
+entails :
+  ∀ {𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+  → ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+  → Bool
+entails store c = null (schedule (negateConstraint c ∷ []) store)
+
+-- A unification is an exact match iff every constraint it
+-- introduces is already entailed by the store.
+isExactMatch :
+  ∀ {𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+  → List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint))
+  → Bool
+isExactMatch store unif =
+  all (λ c → entails store (inj₁ c)) unif
 
 -- Reflexive-binding test: a binding (x =ℒ y) is reflexive iff
--- its two sides are decidably equal Code values.  DecEq on Code
--- comes from the Σᵢ's `decval` instance arg, brought into scope
--- via the explicit ⦃ dv ⦄ destructuring.  This is the building
--- block for structural atom equality.
+-- its two sides are decidably equal Code values.
 isReflexiveBinding :
   ∀ {𝒞 Code Constraint}
   → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint → Bool
@@ -201,6 +193,26 @@ isReflexiveBinding (_:-:_ c (x =ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ dv ⦄ ⦃ _ ⦄ 
 ... | yes _ = true
 ... | no  _ = false
 isReflexiveBinding (_:-:_ c (x ≠ℒ y) ⦃ _ ⦄ ⦃ _ ⦄ ⦃ dv ⦄ ⦃ _ ⦄ ⦃ _ ⦄ ⦃ _ ⦄) = false
+
+-- Two-tier exact-match: first try structural reflexive (cheap,
+-- no scheduler call), then fall back to constraint-aware match
+-- via the scheduler.
+exactMatch :
+  ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
+  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
+  → Atom → Atom → Bool
+exactMatch ⦃ _ ⦄ ⦃ at ⦄ store x y with zipMatch at x y
+... | nothing    = false
+... | just unifs =
+  if all isReflexiveBinding unifs
+    then true
+    else isExactMatch store unifs
 
 checkCHS :
   ∀ {Atom 𝒞 Code Constraint}
@@ -217,64 +229,39 @@ checkCHS :
   → Atom
   → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) ⊎ ⊤
 checkCHS {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ at ⦄ constraints chs y =
-  if any (λ x → matchExact x (toggle y)) chs
+  if any (λ x → exactMatch constraints x (toggle y)) chs
     then inj₁ []
     else
       let direct = findExactMatch y chs in
       Data.Maybe.maybe (λ _ → inj₁ constraints) (inj₂ (record {})) direct
   where
-    -- Structural-equality early return: if every binding in the
-    -- unification is reflexive (x =ℒ x via decidable equality),
-    -- the atoms are syntactically identical.  Reflexive bindings
-    -- are trivially entailed by any store, so isExactMatch would
-    -- return true anyway — skipping the scheduler-based call
-    -- saves significant work on the common chs-hit fast path.
-    matchExact :
-      Atom → Atom → Bool
-    matchExact x target with zipMatch at x target
-    ... | nothing      = false
-    ... | just unifs   =
-      if all isReflexiveBinding unifs
-        then true
-        else isExactMatch constraints unifs
- 
     findExactMatch :
       Atom → List Atom → Maybe ⊤
     findExactMatch target [] = nothing
     findExactMatch target (x ∷ xs) =
-      if matchExact x target
+      if exactMatch constraints x target
         then just (record {})
         else findExactMatch target xs
 
--- Structural atom equality, used for chs insertion dedup.
--- Same fast path as inside matchExact, separated as its own
--- predicate so it can be reused at insertion sites.
-structurallyEqual :
-  ∀ {Atom 𝒞 Code Constraint}
-  → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
-  → Atom → Atom → Bool
-structurallyEqual ⦃ at ⦄ x y with zipMatch at x y
-... | nothing    = false
-... | just unifs = all isReflexiveBinding unifs
-
--- Insert into chs only if no structurally-equal entry is
--- already present.  This eliminates duplicate chs entries and
--- cuts down on subsequent checkCHS lookup work.  Using
--- structural equality (DecEq on Code values) instead of full
--- constraint-aware match means insertion is scheduler-free.
+-- Insert into chs only if no constraint-equivalent entry is already present.
 prependIfNew :
   ∀ {Atom 𝒞 Code Constraint}
+  → ⦃ DecEq 𝒞 ⦄
   → ⦃ AtomUtils Atom 𝒞 Code Constraint ⦄
+  → ⦃ ConstraintUtils 𝒞 Code Constraint ⦄
+  → ⦃ ValueUtils 𝒞 Code Constraint ⦄
+  → ⦃ Solver 𝒞 Code Constraint ⦄
+  → ⦃ Scheduler 𝒞 Code Constraint ⦄
+  → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
   → Atom
   → List Atom
   → List Atom
-prependIfNew ⦃ at ⦄ y chs =
-  if any (structurallyEqual y) chs
+prependIfNew store y chs =
+  if any (exactMatch store y) chs
     then chs
     else y ∷ chs
 
 -- Checks the call stack for loops
-
 checkLoops :
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
@@ -316,6 +303,7 @@ termVars :
   → List ℕ
 termVars (_ :-: val) = collectVars val
 
+-- The function used for detecting cycles in the call stack and already derived hits in the CHS.
 {-# TERMINATING #-}
 checkASP : 
   ∀ {Atom 𝒞 Code Constraint}
@@ -330,6 +318,9 @@ checkASP :
   → (ASPAtom Atom 𝒞 Code Constraint)
   → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (ASPUtils Atom 𝒞 Code Constraint × List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint) × List (Tree ((List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) × Modifier × (ASPAtom Atom 𝒞 Code Constraint))))
 
+-- The top-level intercepter delegates control back to eval if the next literal is a constraint. 
+-- If it is an atom, it looks whether it is forall, in which case it calls cForall.
+-- Then it calls checkASP for the loop checks.
 {-# TERMINATING #-}
 interceptASP :
   ∀ {Atom 𝒞 Code Constraint}
@@ -343,33 +334,33 @@ interceptASP :
   → ⦃ Scheduler 𝒞 Code Constraint ⦄
   → EvalType (ASPAtom Atom 𝒞 Code Constraint) 𝒞 Code Constraint (ASPUtils Atom 𝒞 Code Constraint × List (ASPAtom Atom 𝒞 Code Constraint) × List (ASPAtom Atom 𝒞 Code Constraint) × List (Tree ((List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)) × Modifier × (ASPAtom Atom 𝒞 Code Constraint))))
 
-checkASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ at (aspU , chs , stack , justification) program goals constraints with checkCHS ⦃ dec ⦄ ⦃ ft ⦄ ⦃ ato ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ aspAtomUtils ⦃ aspU ⦄ ⦄ constraints chs at
+checkASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ at n (aspU , chs , stack , justification) program goals constraints with checkCHS ⦃ dec ⦄ ⦃ ft ⦄ ⦃ ato ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ aspAtomUtils ⦃ aspU ⦄ ⦄ constraints chs at
 ... | inj₁ (x ∷ xs) = 
   Data.List.map 
-    (λ ((nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → 
-       ((nAspU , nChs , nNewStack , node ((x ∷ xs) , provenMod , at) [] ∷ nJustification) , nNewConstraints))
+    (λ (n′ , (nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → 
+       (n′ , (nAspU , nChs , nNewStack , node ((x ∷ xs) , provenMod , at) [] ∷ nJustification) , nNewConstraints))
     (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ 
-      (aspU , chs , stack , []) program goals (x ∷ xs))                -- CHS success
-... | inj₁ [] = []                                                          -- CHS fail
+      n (aspU , chs , stack , []) program goals (x ∷ xs)) -- CHS success
+... | inj₁ [] = []                                        -- CHS fail
 ... | inj₂ _ with checkLoops ⦃ dec ⦄ ⦃ ato ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ ⦃ aspAtomUtils ⦃ aspU ⦄ ⦄ constraints stack at 0
-... | inj₁ [] = []                                                          -- Loop fail
+... | inj₁ [] = []                                        -- Loop fail
 ... | inj₁ (x ∷ xs) = 
   Data.List.map 
-    (λ ((nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → 
-       ((nAspU , nChs , nNewStack , node ([] , chsMod , at) [] ∷ nJustification) , nNewConstraints))
+    (λ (n′ , (nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → 
+       (n′ , (nAspU , nChs , nNewStack , node ([] , chsMod , at) [] ∷ nJustification) , nNewConstraints))
     (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ 
-      (aspU , prependIfNew ⦃ ato ⦄ at chs , stack , []) program goals (x ∷ xs))                 -- Loop success
+      n (aspU , prependIfNew ⦃ dec ⦄ ⦃ ato ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (x ∷ xs) at chs , stack , []) program goals (x ∷ xs))                 -- Loop success
 ... | inj₂ _ = 
-  let res = eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄) (aspU , chs , (at ∷ stack) , []) program (atom ⦃ ft ⦄ ⦃ ato ⦄ at ∷ []) constraints in
+  let res = eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄) n (aspU , chs , (at ∷ stack) , []) program (atom ⦃ ft ⦄ ⦃ ato ⦄ at ∷ []) constraints in
     (concat ∘ 
       Data.List.map 
-        (λ ((aspU , chs , newStack , justification) , newConstraints) → 
-          Data.List.map (λ ((nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → ((nAspU , nChs , nNewStack , node ([] , noneMod , at) justification ∷ nJustification) , nNewConstraints)) 
-            (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ (aspU , prependIfNew ⦃ ato ⦄ at chs , stack , []) program goals newConstraints))) res
+        (λ (n′ , (aspU , chs , newStack , justification) , newConstraints) → 
+          Data.List.map (λ (n″ , (nAspU , nChs , nNewStack , nJustification) , nNewConstraints) → (n″ , (nAspU , nChs , nNewStack , node ([] , noneMod , at) justification ∷ nJustification) , nNewConstraints)) 
+            (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ n′ (aspU , prependIfNew ⦃ dec ⦄ ⦃ ato ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ solv ⦄ ⦃ sched ⦄ newConstraints at chs , stack , []) program goals newConstraints))) res
 
-interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program (constraint cn ∷ goals) constraints = 
-  eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄) (aspU , chs , stack , justification) program (constraint cn ∷ goals) constraints
-interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
+interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ n (aspU , chs , stack , justification) program (constraint cn ∷ goals) constraints = 
+  eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄) n (aspU , chs , stack , justification) program (constraint cn ∷ goals) constraints
+interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ n
   state@(aspU , chs , stk , justification)
   program
   (atom ⦃ fta ⦄ ⦃ ata ⦄ (forAll t outer) ∷ goals)
@@ -382,25 +373,25 @@ interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv
   with cForallExec ⦃ dec ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ ft ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
                    termVarPairs
                    innerAtom
-                   (λ renamedAtom st sto →
+                   (λ renamedAtom n′ st sto →
                      interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
-                       st program (atom ⦃ fta ⦄ ⦃ ata ⦄ renamedAtom ∷ []) sto)
-                   state constraints
+                       n′ st program (atom ⦃ fta ⦄ ⦃ ata ⦄ renamedAtom ∷ []) sto)
+                   n state constraints
 ... | nothing                                = []
-... | just (threadedState , finalStore , cellTrees) =
+... | just (nAfter , threadedState , finalStore , cellTrees) =
   let
     headerNode : JTree _ _ _ _
     headerNode = node (constraints , noneMod , forAll t outer) cellTrees
  
     contResults =
       interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
-        threadedState program goals finalStore
+        nAfter threadedState program goals finalStore
   in
   Data.List.map
-    (λ { ((rAspU , rChs , rStk , rJust) , rConstraints) →
-         ((rAspU , rChs , rStk , headerNode ∷ rJust) , rConstraints) })
+    (λ { (n′ , (rAspU , rChs , rStk , rJust) , rConstraints) →
+         (n′ , (rAspU , rChs , rStk , headerNode ∷ rJust) , rConstraints) })
     contResults
-interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program (atom at ∷ goals) constraints = 
-  checkASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ at (aspU , chs , stack , justification) program goals constraints
-interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ (aspU , chs , stack , justification) program [] constraints = 
-  ((aspU , chs , stack , []) , constraints) ∷ []
+interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ n (aspU , chs , stack , justification) program (atom at ∷ goals) constraints = 
+  checkASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ at n (aspU , chs , stack , justification) program goals constraints
+interceptASP ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ n (aspU , chs , stack , justification) program [] constraints = 
+  (n , (aspU , chs , stack , []) , constraints) ∷ []

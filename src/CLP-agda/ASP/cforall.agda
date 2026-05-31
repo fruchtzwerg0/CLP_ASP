@@ -6,10 +6,7 @@ open import CLP.ftUtilsDerivation
 open import CLP.utilities
 open import ASP.types
 open import Data.Bool hiding (_≟_)
-open import Data.String 
-  using (String; _++_; _==_)
 open import Data.Nat hiding (equal; _≟_)
-open import Data.Nat.Show using () renaming (show to showℕ)
 open import Data.List hiding (_++_)
 open import Data.List.Base hiding (_++_)
 open import Data.List.Membership.DecSetoid using (_∈?_)
@@ -23,7 +20,6 @@ open import Relation.Nullary using (yes; no)
 open import Function.Base
 
 open import Generics
-open import Debug.Trace
 
 open import CLP.clp
 open import CLP.outputFormatter
@@ -59,50 +55,9 @@ JTree Atom 𝒞 Code Constraint =
         × Modifier × (ASPAtom Atom 𝒞 Code Constraint))
 
 private
-  showVarList : List ℕ → String
-  showVarList []       = "[]"
-  showVarList (v ∷ vs) = "[" ++ showℕ v ++ go vs ++ "]"
-    where
-      go : List ℕ → String
-      go []       = ""
-      go (x ∷ xs) = "," ++ showℕ x ++ go xs
-
-  showConjunct :
-    ∀ {𝒞 Code Constraint}
-    → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-    → Conjunct 𝒞 Code Constraint
-    → String
-  showConjunct (inj₁ c@(_ :-: (_ =ℒ _))) = "Eq"  ++ showVarList (collectVarsᵥ {_} {⊤} _ _ _ (inj₁ c))
-  showConjunct (inj₁ c@(_ :-: (_ ≠ℒ _))) = "Neq" ++ showVarList (collectVarsᵥ {_} {⊤} _ _ _ (inj₁ c))
-  showConjunct (inj₂ c)                  = "Dual" ++ showVarList (collectVarsᵥ {_} {⊤} _ _ _ (inj₂ c))
-
-  showConjunctList :
-    ∀ {𝒞 Code Constraint}
-    → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-    → List (Conjunct 𝒞 Code Constraint)
-    → String
-  showConjunctList []       = "{}"
-  showConjunctList (c ∷ cs) = "{" ++ showConjunct c ++ go cs ++ "}"
-    where
-      go : ∀ {𝒞 Code Constraint} → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-        → List (Conjunct 𝒞 Code Constraint) → String
-      go []       = ""
-      go (x ∷ xs) = ", " ++ showConjunct x ++ go xs
-
-  showStore :
-    ∀ {𝒞 Code Constraint}
-    → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-    → Store 𝒞 Code Constraint
-    → String
-  showStore []           = "[]"
-  showStore (cs ∷ rest)  = "[" ++ showConjunctList cs ++ go rest ++ "]"
-    where
-      go : ∀ {𝒞 Code Constraint} → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-        → Store 𝒞 Code Constraint → String
-      go []          = ""
-      go (cs ∷ rest) = " ; " ++ showConjunctList cs ++ go rest
-
-private
+  -- Compute the new chs entries: those in `outChs` but not in
+  -- `inChs`.  The engine prepends new entries, so the new ones
+  -- are the prefix of length (|outChs| − |inChs|).
   newChsEntries :
     ∀ {Atom 𝒞 Code Constraint}
     → List (ASPAtom Atom 𝒞 Code Constraint)
@@ -111,6 +66,8 @@ private
   newChsEntries inChs outChs =
     take (length outChs ∸ length inChs) outChs
 
+  -- Project the answer onto V: keep conjuncts that involve v
+  -- AND directly relate v to a constant (not to another variable).
   projectOnOne :
     ∀ {𝒞 Code Constraint}
     → ⦃ ValueUtils 𝒞 Code Constraint ⦄
@@ -225,22 +182,6 @@ private
       (Data.List.Base.map (swapVarInConjunct term v_old v_new))
       store
 
-  -- Compute max var id across an atom + chs + store.
-  maxVarInScope :
-    ∀ {Atom 𝒞 Code Constraint}
-    → ⦃ FTUtils (ASPAtom Atom 𝒞 Code Constraint) ⦄
-    → ⦃ ValueUtils 𝒞 Code Constraint ⦄
-    → ASPAtom Atom 𝒞 Code Constraint
-    → List (ASPAtom Atom 𝒞 Code Constraint)
-    → Store 𝒞 Code Constraint
-    → ℕ
-  maxVarInScope at chs store =
-    foldr _⊔_ 0
-      (collectVars at Data.List.Base.++
-       (concat (Data.List.Base.map collectVars chs)) Data.List.Base.++
-       (concat (Data.List.Base.map (λ d →
-          concat (Data.List.Base.map (collectVarsᵥ {_} {⊤} _ _ _) d)) store)))
-
 {-# TERMINATING #-}
 cForallExec :
   ∀ {Atom 𝒞 Code Constraint}
@@ -255,12 +196,15 @@ cForallExec :
   → List (Σᵢ 𝒞 Code Code Constraint × ℕ)
   → ASPAtom Atom 𝒞 Code Constraint
   → ( ASPAtom Atom 𝒞 Code Constraint
+    → ℕ
     → ASPState Atom 𝒞 Code Constraint
     → Store 𝒞 Code Constraint
-    → List (ASPState Atom 𝒞 Code Constraint × Store 𝒞 Code Constraint) )
+    → List (ℕ × ASPState Atom 𝒞 Code Constraint × Store 𝒞 Code Constraint) )
+  → ℕ                                  -- input counter
   → ASPState Atom 𝒞 Code Constraint
   → Store 𝒞 Code Constraint
-  → Maybe ( ASPState Atom 𝒞 Code Constraint
+  → Maybe ( ℕ                          -- new counter
+          × ASPState Atom 𝒞 Code Constraint
           × Store 𝒞 Code Constraint
           × List (JTree Atom 𝒞 Code Constraint) )
 
@@ -280,87 +224,69 @@ descendCells :
   → List (Σᵢ 𝒞 Code Code Constraint × ℕ)
   → ASPAtom Atom 𝒞 Code Constraint
   → ( ASPAtom Atom 𝒞 Code Constraint
+    → ℕ
     → ASPState Atom 𝒞 Code Constraint
     → Store 𝒞 Code Constraint
-    → List (ASPState Atom 𝒞 Code Constraint × Store 𝒞 Code Constraint) )
+    → List (ℕ × ASPState Atom 𝒞 Code Constraint × Store 𝒞 Code Constraint) )
+  → ℕ                                  -- input counter
   → ASPState Atom 𝒞 Code Constraint
-  → Store 𝒞 Code Constraint
-  → List (Conjunct 𝒞 Code Constraint)
-  → Maybe ( ASPState Atom 𝒞 Code Constraint
+  → Store 𝒞 Code Constraint                    -- threaded store from prior cells
+  → List (Conjunct 𝒞 Code Constraint)          -- list of refinement-conjuncts (one per pending cell)
+  → Maybe ( ℕ                                  -- new counter
+          × ASPState Atom 𝒞 Code Constraint
           × Store 𝒞 Code Constraint
           × List (JTree Atom 𝒞 Code Constraint) )
-descendCells term v_old rest body evalGoal state threadedStore [] =
-  trace "[descendCells] base case: empty refinement list"
-    (just (state , threadedStore , []))
-descendCells term v_old rest body evalGoal state threadedStore (refinement ∷ moreRefinements) =
-  -- Allocate fresh NV from the threaded store + chs + body.
-  let mark        = maxVarInScope body (getChs state) threadedStore
-      v_new       = suc mark
+descendCells term v_old rest body evalGoal n state threadedStore [] =
+  just (n , state , threadedStore , [])
+descendCells term v_old rest body evalGoal n state threadedStore (refinement ∷ moreRefinements) =
+  -- Allocate fresh NV directly from the threaded counter — no
+  -- need to walk body/chs/store any more.
+  let v_new       = suc n
+      n′          = v_new                     -- bumped counter; this NV is now in scope
       renamedBody = swapVarInAtom term v_old v_new body
+      -- Apply this cell's refinement, with v_old → v_new
+      -- (so the refinement constrains THIS cell's NV, not prior
+      -- cells' NVs).
       renamedRefinement = swapVarInConjunct term v_old v_new refinement
+      -- Build cell N+1's input store: take threaded store from
+      -- prior cells, add this cell's refinement.  Run schedule
+      -- to normalize.
       cellInputCandidates = schedule (renamedRefinement ∷ []) threadedStore
   in case cellInputCandidates of λ where
        [] →
          -- This cell's refinement is inconsistent with the
-         -- threaded store; skip this cell.  This shouldn't
-         -- normally happen after refineByNegation already
-         -- filtered, but be defensive.
-         trace ("[descendCells] cell with v_old=" ++ showℕ v_old ++
-                " v_new=" ++ showℕ v_new ++
-                ": refinement inconsistent with threaded store; skipping")
-           (descendCells term v_old rest body evalGoal state threadedStore moreRefinements)
+         -- threaded store; skip this cell.
+         descendCells term v_old rest body evalGoal n state threadedStore moreRefinements
        cellInputStore →
-         case (trace ("[descendCells] cell with v_old=" ++ showℕ v_old ++
-                      " v_new=" ++ showℕ v_new ++
-                      "; cellInputStore=" ++ showStore cellInputStore ++
-                      "; chs len=" ++ showℕ (length (getChs state)))
-               (cForallExec rest renamedBody evalGoal state cellInputStore)) of λ where
+         case (cForallExec rest renamedBody evalGoal n′ state cellInputStore) of λ where
              nothing →
-               trace "[descendCells] cForallExec failed; bailing" nothing
-             (just (stateAfterHere , storeAfterHere , cellsHere)) →
-               case (trace ("[descendCells] cell done; recursing on " ++
-                            showℕ (length moreRefinements) ++ " more, " ++
-                            "storeAfterHere=" ++ showStore storeAfterHere)
-                     (descendCells term v_old rest body evalGoal stateAfterHere storeAfterHere moreRefinements)) of λ where
+               nothing
+             (just (nAfter , stateAfterHere , storeAfterHere , cellsHere)) →
+               case (descendCells term v_old rest body evalGoal nAfter stateAfterHere storeAfterHere moreRefinements) of λ where
                    nothing →
-                     trace "[descendCells] subsequent cells failed; bailing" nothing
-                   (just (finalState , finalStore , cellsRest)) →
-                     trace ("[descendCells] returning " ++
-                            showℕ (length cellsHere) ++ " + " ++
-                            showℕ (length cellsRest) ++ " cells")
-                       (just (finalState , finalStore ,
-                              Data.List.Base._++_ cellsHere cellsRest))
+                     nothing
+                   (just (nFinal , finalState , finalStore , cellsRest)) →
+                     just (nFinal , finalState , finalStore ,
+                           Data.List.Base._++_ cellsHere cellsRest)
 
--- Leaf case: no more forall variables.
-cForallExec [] body evalGoal state store
-  with trace ("[cForallExec []] CALL inChs=" ++ showℕ (length (getChs state)) ++
-              " store=" ++ showStore store)
-       (evalGoal body state store)
+cForallExec [] body evalGoal n state store
+  with evalGoal body n state store
 ... | [] =
-  trace "[cForallExec []] evalGoal returned EMPTY; failing"
-    nothing
-... | ((newState , cellStore) ∷ _) =
+  nothing
+... | ((nNew , newState , cellStore) ∷ _) =
   let inChs       = getChs state
       newChs      = getChs newState
       addedRaw    = newChsEntries inChs newChs
       threadedChs = Data.List.Base._++_ addedRaw inChs
       threaded    = withChs threadedChs state
       (_ , _ , _ , nJust) = newState
-  in trace ("[cForallExec []] added " ++ showℕ (length addedRaw) ++
-            " chs entries; threadedChs len=" ++ showℕ (length threadedChs) ++
-            "; got " ++ showℕ (length nJust) ++ " trees; cellStore=" ++
-            showStore cellStore)
-       (just (threaded , cellStore , nJust))
+  in just (nNew , threaded , cellStore , nJust)
 
--- Recursive case: peel off the next forall variable.
-cForallExec ((term , v) ∷ rest) body evalGoal state store
-  with trace ("[cForallExec (" ++ showℕ v ++ "∷..)] HEAD CALL inChs=" ++
-              showℕ (length (getChs state)) ++ " store=" ++ showStore store)
-       (evalGoal body state store)
+cForallExec ((term , v) ∷ rest) body evalGoal n state store
+  with evalGoal body n state store
 ... | [] =
-  trace "[cForallExec (v∷vs)] evalGoal returned EMPTY; failing"
-    nothing
-... | ((newState , []) ∷ _) =
+  nothing
+... | ((nNew , newState , []) ∷ _) =
   -- Empty residual: head call succeeded with no constraints.
   let inChs       = getChs state
       newChs      = getChs newState
@@ -368,14 +294,9 @@ cForallExec ((term , v) ∷ rest) body evalGoal state store
       threadedChs = Data.List.Base._++_ addedRaw inChs
       threaded    = withChs threadedChs state
       (_ , _ , _ , nJust) = newState
-  in trace ("[cForallExec (v∷vs)] EMPTY residual; returning " ++
-            showℕ (length nJust) ++ " cells (head)")
-       (just (threaded , [] , nJust))
-... | ((newState@(_ , _ , _ , nJust) , cellStore@(ansConj ∷ _)) ∷ _)
-  with trace ("[cForallExec (v∷vs)] residualStore=" ++ showStore cellStore ++
-              ", first conj=" ++ showConjunctList ansConj ++
-              "; nJust has " ++ showℕ (length nJust) ++ " trees")
-       (projectOnOne v ansConj)
+  in just (nNew , threaded , [] , nJust)
+... | ((nNew , newState@(_ , _ , _ , nJust) , cellStore@(ansConj ∷ _)) ∷ _)
+  with projectOnOne v ansConj
 ... | [] =
   -- v unconstrained on this branch.
   let inChs       = getChs state
@@ -383,28 +304,22 @@ cForallExec ((term , v) ∷ rest) body evalGoal state store
       addedRaw    = newChsEntries inChs newChs
       threadedChs = Data.List.Base._++_ addedRaw inChs
       threaded    = withChs threadedChs state
-  in trace ("[cForallExec (v∷vs)] projectOnOne v=" ++ showℕ v ++
-            " produced EMPTY; returning " ++ showℕ (length nJust) ++ " cells (head)")
-       (just (threaded , cellStore , nJust))
+  in just (nNew , threaded , cellStore , nJust)
 ... | ansProj =
+  -- For each conjunct in the projection, the "refinement" is its
+  -- negation (the dual).  We pass the list of NEGATED-conjuncts
+  -- to descendCells, which will rename + schedule each per cell.
   let inChs       = getChs state
       newChs      = getChs newState
       addedRaw    = newChsEntries inChs newChs
       threadedChs = Data.List.Base._++_ addedRaw inChs
       threaded    = withChs threadedChs state
       negatedConjuncts = Data.List.Base.map negateConstraint ansProj
-  in case (trace ("[cForallExec (v∷vs)] ansProj has " ++
-                  showℕ (length ansProj) ++
-                  " conjuncts; descending into cells with per-cell rename")
-           (descendCells term v rest body evalGoal threaded
-                         cellStore   -- start threaded store from head call's residual
-                         negatedConjuncts)) of λ where
+  in case (descendCells term v rest body evalGoal nNew threaded
+                        cellStore   -- start threaded store from head call's residual
+                        negatedConjuncts) of λ where
        nothing →
-         trace "[cForallExec (v∷vs)] descendCells FAILED" nothing
-       (just (finalState , finalStore , descendedCells)) →
-         trace ("[cForallExec (v∷vs)] head produced " ++
-                showℕ (length nJust) ++ " cells, descents " ++
-                showℕ (length descendedCells) ++
-                "; finalStore=" ++ showStore finalStore)
-           (just (finalState , finalStore ,
-                  Data.List.Base._++_ nJust descendedCells))
+         nothing
+       (just (nFinal , finalState , finalStore , descendedCells)) →
+         just (nFinal , finalState , finalStore ,
+               Data.List.Base._++_ nJust descendedCells)

@@ -2,30 +2,40 @@
 
 module Main (main) where
 
+import MAlonzo.Code.Examples.QgraphColoring
 import MAlonzo.Code.Examples.QtravelingSalesman
+import MAlonzo.Code.Examples.Qhanoi_without_fd
 import FDSolver
-import Data.Text (pack, unpack)
+import Data.Text
+import System.Environment (getArgs)
 
 main :: IO ()
 main = do
-  mapM_ ((putStrLn . unpack)) execute
-  --print cforallTest
+  args <- getArgs
+  case args of
+    [problem, diffStr] ->
+      case (problem, diffStr) of
+        ("graphColoring", "1") -> run gcExecute1
+        ("graphColoring", "2") -> run gcExecute2
+        ("graphColoring", "3") -> run gcExecute3
 
-{-
-main :: IO ()
-main = do
-  let store =
-        [ Geq (Var 0) (Lit 1)
-        , Leq (Var 0) (Lit 10)
-        , Geq (Var 1) (Lit 1)
-        , Leq (Var 1) (Lit 10)
-        , Eq  (Add (Var 0) (Var 1)) (Lit 7)
-        , Lt  (Var 0) (Var 1)
-        ]
-  sat <- isSatisfiable store
-  putStrLn $ "Satisfiable: " ++ show sat
-  result <- labeling store
-  case result of
-    Nothing -> putStrLn "No solution."
-    Just bs -> mapM_ (\b -> putStrLn $ "Var" ++ show (var b) ++ " = " ++ show (val b)) bs
--}
+        ("travelingSalesman", "1") -> run tsExecute1
+        ("travelingSalesman", "2") -> run tsExecute2
+        ("travelingSalesman", "3") -> run tsExecute3
+
+        ("hanoi", "1") -> run hExecute1
+        ("hanoi", "2") -> run hExecute2
+        ("hanoi", "3") -> run hExecute3
+
+        _ -> usage
+
+    _ -> usage
+
+-- helper to keep your original printing logic
+run :: [Text] -> IO ()
+run = mapM_ (putStrLn . unpack)
+
+-- usage output
+usage :: IO ()
+usage = putStrLn $
+  "Usage: <program> (graphColoring|travelingSalesman|hanoi) (1|2|3)"

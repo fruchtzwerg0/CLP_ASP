@@ -17,6 +17,7 @@ open import Relation.Binary.PropositionalEquality
 open import Generics
 open import Function.Base
 
+-- Substitute variable k ↦ sub in both sides of an ℒ-constraint
 applyConstraint : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
@@ -31,6 +32,7 @@ applyConstraint :
 applyConstraint ⦃ ft ⦄ c₀ c₁ k sub (x =ℒ y) = apply ft c₀ c₁ k sub x =ℒ apply ft c₀ c₁ k sub y
 applyConstraint ⦃ ft ⦄ c₀ c₁ k sub (x ≠ℒ y) = apply ft c₀ c₁ k sub x ≠ℒ apply ft c₀ c₁ k sub y
 
+-- Substitute variable k ↦ sub inside a Dual constraint
 applyCustomConstraint : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
@@ -45,6 +47,7 @@ applyCustomConstraint :
 applyCustomConstraint ⦃ ft ⦄ c₀ c₁ k sub (default cust) = default (apply ft c₀ c₁ k sub cust)
 applyCustomConstraint ⦃ ft ⦄ c₀ c₁ k sub (dual cust) = dual (apply ft c₀ c₁ k sub cust)
 
+-- Substitute variable k ↦ sub in either an ℒ or Dual constraint
 applyMixedConstraint : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
@@ -59,8 +62,7 @@ applyMixedConstraint :
 applyMixedConstraint ⦃ ft ⦄ c k sub (inj₁ (c₁ :-: l)) = (inj₁ (c₁ :-: applyConstraint ⦃ ft ⦄ c c₁ k sub l))
 applyMixedConstraint ⦃ _ ⦄ ⦃ ft ⦄ c k sub (inj₂ (c₁ :-: l)) = (inj₂ (c₁ :-: applyCustomConstraint ⦃ ft ⦄ c c₁ k sub l))
 
--- generic occurs function occursᵥ extended by term.
-
+-- Check whether variable k appears in an ℒ-constraint
 occursConstraint : 
   (𝒞 : Set)
   → (c : 𝒞)
@@ -72,6 +74,7 @@ occursConstraint :
 occursConstraint C c code k (x =ℒ y) = occurs k x ∨ occurs k y
 occursConstraint C c code k (x ≠ℒ y) = occurs k x ∨ occurs k y
 
+-- Check whether variable k appears in a Dual constraint
 occursCustomConstraint : 
   (𝒞 : Set)
   → (c : 𝒞)
@@ -83,6 +86,7 @@ occursCustomConstraint :
 occursCustomConstraint C c code k (default cust) = occurs k cust
 occursCustomConstraint C c code k (dual cust) = occurs k cust
 
+-- Generic occurs check dispatched over all HasVariables cases
 {-# TERMINATING #-}
 occursᵥ : 
   {hv : HasVariables}
@@ -113,6 +117,7 @@ occursᵥ {clause} C code cns k (head :-- body) =
 occursᵥ {listOf y} C code cns k xs =
   any (occursᵥ {y} C code cns k) xs
 
+-- Increment all variable ids ≥ k in a Dual constraint
 incrementCustomConstraint : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
@@ -125,6 +130,7 @@ incrementCustomConstraint :
 incrementCustomConstraint ⦃ ft ⦄ c k (default cust) = (default ∘ increment ft c k) cust
 incrementCustomConstraint ⦃ ft ⦄ c k (dual cust) = (dual ∘ increment ft c k) cust
 
+-- Increment all variable ids ≥ k in an ℒ-constraint
 incrementConstraint : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
@@ -137,6 +143,7 @@ incrementConstraint :
 incrementConstraint ⦃ ft ⦄ c k (x =ℒ y) = increment ft c k x =ℒ increment ft c k y
 incrementConstraint ⦃ ft ⦄ c k (x ≠ℒ y) = increment ft c k x ≠ℒ increment ft c k y
 
+-- Increment all variable ids ≥ n in a literal (atom or constraint)
 incrementLiteral : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -151,6 +158,7 @@ incrementLiteral n (atom ⦃ _ ⦄ ⦃ fs ⦄ x) = atom (increment fs n x)
 incrementLiteral n (constraint (inj₁ (_:-:_ c l))) = constraint (inj₁ (c :-: incrementConstraint c n l))
 incrementLiteral n (constraint (inj₂ (_:-:_ c l))) = constraint (inj₂ (c :-: incrementCustomConstraint c n l))
 
+-- Collect all variable ids from an ℒ-constraint
 collectVarsConstraint : 
   (𝒞 : Set)
   → (c : 𝒞)
@@ -161,6 +169,7 @@ collectVarsConstraint :
 collectVarsConstraint C c code (x =ℒ y) = collectVars x ++ collectVars y
 collectVarsConstraint C c code (x ≠ℒ y) = collectVars x ++ collectVars y
 
+-- Collect all variable ids from a Dual constraint
 collectVarsCustomConstraint : 
   (𝒞 : Set)
   → (c : 𝒞)
@@ -171,6 +180,7 @@ collectVarsCustomConstraint :
 collectVarsCustomConstraint C c code (default cust) = collectVars cust
 collectVarsCustomConstraint C c code (dual cust) = collectVars cust
 
+-- Generic variable collection dispatched over all HasVariables cases
 {-# TERMINATING #-}
 collectVarsᵥ : 
   {hv : HasVariables}
@@ -200,6 +210,7 @@ collectVarsᵥ {clause} C code cns (_:--_ head body ⦃ inst ⦄) =
 collectVarsᵥ {listOf _} C code cns []       = []
 collectVarsᵥ {listOf y} C code cns (x ∷ xs) = collectVarsᵥ {y} C code cns x ++ collectVarsᵥ {listOf y} C code cns xs
 
+-- Extract the payload of a Σᵢ if its solver tag matches c
 getPermission :
   ∀ {𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
@@ -213,6 +224,7 @@ getPermission x (inj₂ (b :-: a)) with x ≟ b
 ... | no _ = nothing
 ... | (yes refl) = just (inj₂ a)
 
+-- Return the Σᵢ unchanged if its solver tag does not match c, else nothing
 getElse :
   ∀ {𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
@@ -226,6 +238,7 @@ getElse x (inj₂ (b :-: a)) with x ≟ b
 ... | no _ = just (inj₂ (b :-: a))
 ... | (yes refl) = nothing
 
+-- Tag an ℒ-constraint with its solver c to form a Σᵢ
 generalize : ∀ {𝒞 Code Constraint}
  → (c : 𝒞)
  → ⦃ FTUtils (Code c) ⦄
@@ -238,6 +251,7 @@ generalize : ∀ {𝒞 Code Constraint}
  → Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint
 generalize c p  = _:-:_ c p
 
+-- Tag a Dual constraint with its solver c to form a Σᵢ
 generalizeCustom : ∀ {𝒞 Code Constraint}
  → (c : 𝒞)
  → ⦃ FTUtils (Code c) ⦄
@@ -250,6 +264,7 @@ generalizeCustom : ∀ {𝒞 Code Constraint}
  → Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint
 generalizeCustom c p  = _:-:_ c p
 
+-- Tag an equality binding (ℕ × Code c) with solver c
 generalizeEqual : ∀ {𝒞 Code Constraint}
  → (c : 𝒞)
  → ⦃ FTUtils (Code c) ⦄
@@ -262,6 +277,7 @@ generalizeEqual : ∀ {𝒞 Code Constraint}
  → Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint
 generalizeEqual c p  = _:-:_ c p
 
+-- Tag a disequality binding (ℕ × Code c) with solver c
 generalizeDisequal : ∀ {𝒞 Code Constraint}
  → (c : 𝒞)
  → ⦃ FTUtils (Code c) ⦄
@@ -274,6 +290,7 @@ generalizeDisequal : ∀ {𝒞 Code Constraint}
  → Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint
 generalizeDisequal c p  = _:-:_ c p
 
+-- Tag an inj₁ (equality) or inj₂ (disequality) ground binding with solver c
 generalizeGround : 
   ∀ {𝒞 Code Constraint}
   → (c : 𝒞)

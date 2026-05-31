@@ -29,35 +29,7 @@ maybeToList : {A : Set} → Maybe (List A) → List A
 maybeToList nothing  = []
 maybeToList (just x) = x
 
--- ---------------------------------------------------------------------
--- Inline-variable optimisation for bindAndRename
--- ---------------------------------------------------------------------
---
--- After a clause is selected for an atom call, zipMatch produces
--- equalities  x =ℒ y  where:
---   * x comes from the CALL atom (atom₀)
---   * y comes from the (renamed) clause head (atom₁)
---
--- The clause's renamed head variables are FRESH in the calling
--- scope.  If a fresh head variable appears in EXACTLY ONE
--- equality, we can substitute it directly into the body in place
--- of the call value, eliminating that variable from the equation
--- system entirely — no constraint needs to be scheduled.
---
--- Concretely, for a binding  x =ℒ y  with  varName y = just z
--- (i.e., y is a variable named z) and z occurs only once in the
--- collected bindings, we substitute  z ↦ x  in every body
--- literal.
---
--- For graph-coloring-like programs where every clause-head
--- variable occurs once in the head and not at all in the body
--- of the OTHER bindings, this completely eliminates head
--- unification overhead.
---
--- Bindings that don't qualify (RHS isn't a variable, or its var
--- appears multiple times) become real constraints scheduled into
--- the store.
-
+-- Some optimization function in which direct variable applications are directly renamed within the body of the clause.
 applyToBody : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -93,6 +65,7 @@ isValid : Maybe Bool → Bool
 isValid nothing = false
 isValid (just x) = x
 
+-- Inlines an atom head with its body in the goal
 bindAndRename : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -164,11 +137,12 @@ dropWhile p (x ∷ xs) with p x
 
 EvalType : Set → (𝒞 : Set) → (𝒞 → Set) → (𝒞 → Set) → Set → Set
 EvalType Atom 𝒞 Code Constraint Custom = 
-  Custom
+  ℕ                                       -- input counter (max var seen so far)
+  → Custom
   → List (ClauseI Atom 𝒞 Code Constraint)
   → List (Literal Atom 𝒞 Code Constraint)
   → (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))
-  → List (Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
+  → List (ℕ × Custom × (List ∘ List) ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint)))
 
 -- Generic evaluation function (implements operational semantics of SLD-resolution)
 eval : 
@@ -192,27 +166,43 @@ eval :
     → EvalType Atom 𝒞 Code Constraint Custom)
   → EvalType Atom 𝒞 Code Constraint Custom
 
--- base case
-eval _ custom program [] right = (custom , right) ∷ []
+-- base case: empty goal list — return current counter
+eval _ n custom program [] right = (n , custom , right) ∷ []
 
--- cases for splitting an atom into the body of its unified clause
-eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ _ _ program (atom at ∷ left) right with filterᵇ (is-just ∘ zipMatch ato at ∘ ClauseI.head) program
+-- cases for splitting an atom into the body of its unified clause.
+-- The atom-expansion case is the main place where collectVars
+-- used to be called.  Now we use the threaded counter `n` and
+-- compute the new max var only over the just-produced body
+-- (which is bounded by the clause size, not the whole goal /
+-- store state).
+eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ _ _ _ program (atom at ∷ left) right with filterᵇ (is-just ∘ zipMatch ato at ∘ ClauseI.head) program
 
-eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ intercept custom program (atom at ∷ left) right | split =
+eval {Atom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ intercept n custom program (atom at ∷ left) right | split =
   (concat ∘ Data.List.map (λ cl → 
+    let
+      newBody    = bindAndRename ⦃ ato ⦄ at n cl
+      -- New max is bounded above by max(n, max var introduced
+      -- in the new body).  We walk just newBody (small, local)
+      -- to get the new max — this is the only place
+      -- collectVarsᵥ is invoked from eval.
+      newBodyMax = (foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) newBody
+      n′         = n ⊔ newBodyMax
+    in
     intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
+          n′
           custom 
           program
-          ((bindAndRename ⦃ ato ⦄ at (((foldr _⊔_ 0 ∘ collectVarsᵥ C Code Constraint) (atom ⦃ ft ⦄ ⦃ ato ⦄ at ∷ left)) ⊔ ((foldr _⊔_ 0 ∘ collectVarsᵥ {_}{Atom} C Code Constraint) right)) cl) ++ left)
+          (newBody ++ left)
           right))
       split
 
-eval intercept custom program goals@(constraint cnstr ∷ left) right with 
+eval intercept n custom program goals@(constraint cnstr ∷ left) right with 
   schedule ((catMaybes ∘ takeWhile is-just ∘ Data.List.map (λ { (constraint x) → just x ; (atom _) → nothing })) goals) right
-eval intercept custom program (constraint cnstr ∷ left) right | [] = []
-eval intercept custom program (constraint cnstr ∷ left) right | newConstraints = 
-  intercept custom program (dropWhile (λ { (constraint _) → true ; (atom _) → false }) left) newConstraints
+eval intercept n custom program (constraint cnstr ∷ left) right | [] = []
+eval intercept n custom program (constraint cnstr ∷ left) right | newConstraints = 
+  intercept n custom program (dropWhile (λ { (constraint _) → true ; (atom _) → false }) left) newConstraints
 
+-- A default intercepter implementation that simply delegates control back to eval (the function doing SLD-resolution).
 {-# TERMINATING #-}
 defaultIntercept :
   ∀ {Atom 𝒞 Code Constraint Custom}
@@ -227,6 +217,7 @@ defaultIntercept :
 defaultIntercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ = 
   eval ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄ (defaultIntercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄)
 
+-- Small scheduling machinery for coordinating the grounders.
 {-# TERMINATING #-}
 groundSchedule :
   ∀ {𝒞 Code Constraint}
@@ -299,27 +290,36 @@ clpExecute :
     List (if shouldGround 
     then List ((Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint) ⊎ (Σᵢ 𝒞 (λ c → ℕ × Code c) Code Constraint))
     else List ((Σᵢ 𝒞 (ℒ ∘ Code) Code Constraint) ⊎ (Σᵢ 𝒞 (Dual ∘ Constraint) Code Constraint))))
-clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept true custom program question = 
-  let result = intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
-                custom 
-                (convertProgram program) 
-                (convertQuestion question)
-                ([] ∷ []) in
-  let cust = Data.List.map proj₁ result in
-  let payl = Data.List.map proj₂ result in
+clpExecute {ConcreteAtom}{AbstractAtom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept true custom program question = 
+  let translatedQ = convertQuestion question
+      initN       = (foldr _⊔_ 0 ∘ collectVarsᵥ {_}{AbstractAtom} C Code Constraint) translatedQ
+      result      = intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
+                      initN
+                      custom 
+                      (convertProgram program) 
+                      translatedQ
+                      ([] ∷ []) in
+  let cust = Data.List.map (proj₁ ∘ proj₂) result in
+  let payl = Data.List.map (proj₂ ∘ proj₂) result in
     Data.List.zip cust (
       Data.List.map (
         Data.List.map (groundSchedule [] [])) payl)
-clpExecute ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept false custom program question = 
-  intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
-                custom 
-                (convertProgram program) 
-                (convertQuestion question)
-                ([] ∷ [])
+clpExecute {ConcreteAtom}{AbstractAtom}{C}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄ convertProgram convertQuestion intercept false custom program question = 
+  let translatedQ = convertQuestion question
+      initN       = (foldr _⊔_ 0 ∘ collectVarsᵥ {_}{AbstractAtom} C Code Constraint) translatedQ
+  in
+  Data.List.map (λ { (n , cu , st) → (cu , st) })
+    (intercept ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃ val ⦄ ⦃ ato ⦄ ⦃ solv ⦄ ⦃ sched ⦄
+                  initN
+                  custom 
+                  (convertProgram program) 
+                  translatedQ
+                  ([] ∷ []))
 
 top : ⊤
 top = record {}
 
+-- A default clpExecute parameterization that can be used when no overloading is wanted.
 defaultExecute : 
   ∀ {Atom validate 𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄

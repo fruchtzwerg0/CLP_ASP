@@ -81,7 +81,6 @@ aspExecute {Atom}{C}{_}{Code}{Constraint} ⦃ dec ⦄ ⦃ ft ⦄ ⦃ cns ⦄ ⦃
 --   atom (wrap (fnot o_other_color_1 ...) 0 []) ∷ []
 -- and see exactly what answer interceptASP produces, with what
 -- residual constraints.
-
 aspExecuteDirect :
   ∀ {Atom 𝒞 validate Code Constraint}
   → ⦃ DecEq 𝒞 ⦄
@@ -131,20 +130,30 @@ aspExecuteDirect {Atom}{C}{_}{Code}{Constraint}
                       ⦃ aspFT ⦃ ft ⦄ ⦄
                       ⦃ dec ⦄ internProgram
 
+    -- Compute initial counter from the goal literals' max var.
+    -- Done once at startup; subsequent calls use the threaded
+    -- counter from interceptASP rather than re-walking goals.
+    initN : ℕ
+    initN = (foldr _⊔_ 0 ∘ collectVarsᵥ {_}{ASPAtom Atom C Code Constraint} C Code Constraint) goalLiterals
+
     -- Call interceptASP directly with the user-supplied goal.
+    -- Result entries are (n , custom , store) with the threaded
+    -- counter at position 0 — we drop it for downstream use.
     rawResults =
       interceptASP ⦃ dec ⦄ ⦃ aspFT ⦃ ft ⦄ ⦄ ⦃ cns ⦄ ⦃ val ⦄
                    ⦃ aspAtom ⦃ dec ⦄ ⦃ at ⦄ ⦃ val ⦄ ⦄
                    ⦃ solv ⦄ ⦃ grou ⦄ ⦃ sched ⦄
+                   initN
                    (as , [] , [] , [])
                    aspProgram
                    goalLiterals
                    ([] ∷ [])
 
     -- Apply grounding to each result's constraint store, just like
-    -- the `true`-branch of clpExecute does.
-    custs = Data.List.map proj₁ rawResults
-    payls = Data.List.map proj₂ rawResults
+    -- the `true`-branch of clpExecute does.  Drop the threaded
+    -- counter (proj₁) since downstream consumers don't need it.
+    custs = Data.List.map (proj₁ ∘ proj₂) rawResults
+    payls = Data.List.map (proj₂ ∘ proj₂) rawResults
     grounded =
       Data.List.zip custs
         (Data.List.map (Data.List.map (groundSchedule [] [])) payls)

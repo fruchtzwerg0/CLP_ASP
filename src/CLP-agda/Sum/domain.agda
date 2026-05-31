@@ -6,18 +6,16 @@ open import Data.Nat.Show
 open import Data.Maybe
 open import Data.List
 open import Function.Base
-
 open import Relation.Nullary
 open import Relation.Nullary.Decidable as Decidable
 open import Relation.Binary.PropositionalEquality
-
 open import Generics
 open import CLP.ftUtilsDerivation
 open import CLP.types
 
 data ⊎Logic (A : Set) (B : Set) : Set where
-  p : A → ⊎Logic A B
-  q : B → ⊎Logic A B
+  p    : A → ⊎Logic A B
+  q    : B → ⊎Logic A B
   var⊎ : ℕ → ⊎Logic A B
 
 ⊎D : HasDesc ⊎Logic
@@ -34,15 +32,42 @@ instance  showℕ : Show ℕ
 
 instance  makeVar⊎ : ∀ {A B} → MakeVar (⊎Logic A B)
           makeVar⊎ .fresh = var⊎
-          makeVar⊎ .new = var⊎ 0
+          makeVar⊎ .new   = var⊎ 0
 
 instance  unifyDisunifyℕ : FTUtils ℕ
           unifyDisunifyℕ = deriveFTUtils ℕD
 
-instance  ftUtils⊎ : ∀ {A B} → ⦃ FTUtils A ⦄ → ⦃ FTUtils B ⦄ → FTUtils (⊎Logic A B)
-          ftUtils⊎ = deriveFTUtils ⊎D
+-- Manual FTUtils for ⊎Logic.
+instance ftUtils⊎ :
+           ∀ {A B} → ⦃ FTUtils A ⦄ → ⦃ FTUtils B ⦄ → FTUtils (⊎Logic A B)
 
-fold⊎ = deriveFold ⊎D
+         ftUtils⊎ .functor (p _)    = "p"
+         ftUtils⊎ .functor (q _)    = "q"
+         ftUtils⊎ .functor (var⊎ _) = "var⊎"
+
+         ftUtils⊎ .varName (var⊎ n) = just n
+         ftUtils⊎ .varName _        = nothing
+
+         ftUtils⊎ ⦃ fA ⦄ ⦃ fB ⦄ .occurs n (p x)    = occurs ⦃ fA ⦄ n x
+         ftUtils⊎ ⦃ fA ⦄ ⦃ fB ⦄ .occurs n (q x)    = occurs ⦃ fB ⦄ n x
+         ftUtils⊎              .occurs n (var⊎ m) = n ≡ᵇ m
+
+         ftUtils⊎ ⦃ fA ⦄ ⦃ fB ⦄ .collectVars (p x)    = collectVars ⦃ fA ⦄ x
+         ftUtils⊎ ⦃ fA ⦄ ⦃ fB ⦄ .collectVars (q x)    = collectVars ⦃ fB ⦄ x
+         ftUtils⊎              .collectVars (var⊎ n) = n ∷ []
+
+         ftUtils⊎ .getNat _ = nothing
+
+-- Manual fold for ⊎Logic.
+fold⊎ :
+  ∀ {A B C : Set}
+  → (A → C)            -- p
+  → (B → C)            -- q
+  → (ℕ → C)            -- var⊎
+  → ⊎Logic A B → C
+fold⊎ fp fq fv (p x)    = fp x
+fold⊎ fp fq fv (q x)    = fq x
+fold⊎ fp fq fv (var⊎ n) = fv n
 
 instance  dec⊎ : ∀ {A B} → ⦃ DecEq A ⦄ → ⦃ DecEq B ⦄ → DecEq (⊎Logic A B)
           dec⊎ = deriveDecEq ⊎D
@@ -93,5 +118,8 @@ zipMatch⊎ c₀ c₁ (p x) (p y) = just ((_:-:_ c₀ (x =ℒ y)) ∷ [])
 zipMatch⊎ c₀ c₁ (q x) (q y) = just ((_:-:_ c₁ (x =ℒ y)) ∷ [])
 zipMatch⊎ _ _ _ _ = nothing
 
+-- Direct (non-fold) implementation of increment⊎.
 increment⊎ : ∀ {A B} → (ℕ → A → A) → (ℕ → B → B) → ℕ → ⊎Logic A B → ⊎Logic A B
-increment⊎ inc₀ inc₁ x = fold⊎ (p ∘ inc₀ x) (q ∘ inc₁ x) (λ y → var⊎ (x + y))
+increment⊎ inc₀ inc₁ x (p a)    = p (inc₀ x a)
+increment⊎ inc₀ inc₁ x (q b)    = q (inc₁ x b)
+increment⊎ inc₀ inc₁ x (var⊎ n) = var⊎ (x + n)

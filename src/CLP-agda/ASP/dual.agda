@@ -25,29 +25,35 @@ open import Relation.Binary.PropositionalEquality
 
 open import Generics
 
+-- Produce [n-1, n-2, ..., 0]
 count : ℕ → List ℕ
 count (suc x) = x ∷ count x
 count zero = []
 
+-- Unfold a list from a seed, stopping at nothing
 {-# TERMINATING #-}
 unfoldr : {A B : Set} → (B → Maybe (A × B)) → B → List A
 unfoldr f seed with f seed
 ... | nothing        = []
 ... | just (x , seed') = x ∷ unfoldr f seed'
 
+-- Convert a decidable proposition to Bool
 decToBool : ∀ {ℓ} {P : Set ℓ} → Dec P → Bool
 decToBool (yes _) = true
 decToBool (no  _) = false
 
+-- Unwrap a Maybe (List A), treating nothing as []
 maybeToList : {A : Set} → Maybe (List A) → List A
 maybeToList nothing  = []
 maybeToList (just x) = x
 
+-- Remove duplicates using a custom equality predicate
 {-# TERMINATING #-}
 nubBy : {A : Set} → (A → A → Bool) → List A → List A
 nubBy _ []       = []
 nubBy pred (x ∷ xs) = x ∷ nubBy pred (filterᵇ (λ y → Data.Bool.not (pred x y)) xs)
 
+-- Structural equality on typed value assignments Σᵢ
 equal : 
   ∀ {𝒞 Code Constraint}
   → ⦃ DecEq 𝒞 ⦄ 
@@ -56,9 +62,11 @@ equal (_:-:_ c₀ x ⦃ _ ⦄ ⦃ _ ⦄ ⦃ inst ⦄) (_:-:_ c₁ y) with c₀ �
 ... | yes refl = decToBool (_≟_ ⦃ inst ⦄ x y)
 ... | no _ = false
 
+-- Remove from xs all elements appearing in ys (by pred)
 without : {A : Set} → (A → A → Bool) → List A → List A → List A
 without pred xs ys = filterᵇ (λ x → Data.Bool.not (any (pred x) ys)) xs
 
+-- Replace non-variable positions with fresh variables starting at n
 fillWithVars : 
   ∀ {𝒞 Code Constraint}
   → List (Σᵢ 𝒞 Code Code Constraint)
@@ -70,6 +78,7 @@ fillWithVars ((_:-:_ c x ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ va ⦄) ∷ xs) n =
   else (_:-:_ c (fresh n) ⦃ a ⦄ ⦃ b ⦄ ⦃ d ⦄ ⦃ va ⦄) ∷ fillWithVars xs (suc n) 
 fillWithVars [] _ = []
 
+-- Lift a literal's atom type along a function Atom → Atom₀
 toNewLiteral : 
   {Atom : Set}
   {Atom₀ : Set}
@@ -84,6 +93,7 @@ toNewLiteral :
 toNewLiteral ⦃ a ⦄ ⦃ cn ⦄ toNewAtom (atom at) = atom ⦃ a ⦄ ⦃ cn ⦄ (toNewAtom at)
 toNewLiteral _ (constraint c) = constraint c
 
+-- Build a list of top-level auxiliary atoms for a given arity n
 makeTopLevelBody : 
   {Atom : Set}
   {Atom₀ : Set}
@@ -98,6 +108,7 @@ makeTopLevelBody :
 makeTopLevelBody f at zero = []
 makeTopLevelBody f at (suc x) = f at (suc x) [] ∷ makeTopLevelBody f at x
 
+-- Project the left-hand side of an ℒ-equality or inequality assignment
 getFirst : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
@@ -107,6 +118,7 @@ getFirst :
 getFirst (_:-:_ c₁ (x =ℒ y) ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) = _:-:_ c₁ x ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄
 getFirst (_:-:_ c₁ (x ≠ℒ y) ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄) = _:-:_ c₁ x ⦃ d ⦄ ⦃ val ⦄ ⦃ e ⦄
 
+-- Extract the argument list of an atom as typed value assignments
 toArgList : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
@@ -117,6 +129,7 @@ toArgList :
   → List (Σᵢ 𝒞 Code Code Constraint)
 toArgList ⦃ at ⦄ a = maybeToList (zipMatch at a a Data.Maybe.>>= just ∘ Data.List.map getFirst)
 
+-- Wrap an atom together with its own argument list into an ASPAtom
 toNewAtom : 
   {Atom : Set}
   {𝒞 : Set}
@@ -127,6 +140,7 @@ toNewAtom :
   → ASPAtom Atom 𝒞 Code Constraint
 toNewAtom x = (wrap x 0 ∘ toArgList) x
 
+-- Recursively unify a list of assignments, expanding compound values
 {-# TERMINATING #-}
 zipMatchRecursive : 
   {𝒞 : Set}
@@ -147,6 +161,7 @@ zipMatchRecursive x | y = (concat ∘ Data.List.map (λ {
     zipMatchRecursive b})) (zipWith _,_ x y)
 zipMatchRecursive [] = []
 
+-- Collect all leaf-level variable assignments from a literal
 collectLeaves : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -171,6 +186,7 @@ collectLeaves (atom ⦃ _ ⦄ ⦃ cn ⦄ at) with zipMatch cn at at
 ... | just x = (zipMatchRecursive ∘ Data.List.map getFirst) x
 ... | nothing = []
 
+-- Variables in the body but not in the head (existentially quantified)
 existentialVars : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -186,6 +202,7 @@ existentialVars (_:--_ hea bod ⦃ ft ⦄ ⦃ at ⦄) =
     ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ concat ∘ Data.List.map collectLeaves) bod))
     ((filterᵇ (λ { (_:-:_ c₁ x ⦃ f ⦄) → (is-just ∘ varName) x }) ∘ collectLeaves ∘ atom ⦃ ft ⦄ ⦃ at ⦄) hea)
 
+-- Flip = to ≠, ≠ to =, dual to default, and vice versa
 negateConstraint : 
   {𝒞 : Set}
   → {Code : (𝒞 → Set)}
@@ -197,6 +214,7 @@ negateConstraint (inj₁ (c₁ :-: (l ≠ℒ r))) = inj₁ (c₁ :-: (l =ℒ r))
 negateConstraint (inj₂ (c₁ :-: (dual l))) = inj₂ (c₁ :-: (default l))
 negateConstraint (inj₂ (c₁ :-: (default l))) = inj₂ (c₁ :-: (dual l))
 
+-- Negate a literal: toggle atom polarity or negate the constraint
 negateLiteral : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -208,6 +226,7 @@ negateLiteral :
 negateLiteral (atom at) = (atom ∘ toggle) at
 negateLiteral (constraint x) = (constraint ∘ negateConstraint) x
 
+-- Keep the first n body literals unchanged, negate the (n+1)-th
 buildNegatedBody : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -221,6 +240,7 @@ buildNegatedBody (suc n) (x ∷ xs) = x ∷ buildNegatedBody n xs
 buildNegatedBody (zero) (x ∷ xs) = negateLiteral x ∷ []
 buildNegatedBody _ [] = []
 
+-- Apply De Morgan dualisation: one support clause per body literal
 applyDeMorgan : 
   {Atom : Set}
   {Atom₀ : Set}
@@ -242,6 +262,7 @@ applyDeMorgan f toNewAtom n (hea :-- bod) = let forAllVars = existentialVars (he
   in (unfoldr (λ { (suc x) → just ((f hea n forAllVars :-- ((Data.List.map ∘ toNewLiteral) toNewAtom ∘ buildNegatedBody ( ∣ length bod - suc x ∣ )) bod) , x) ;
                   zero → nothing }) ∘ length) bod
 
+-- Build a universally-quantified atom by threading forA over each variable
 buildForAll : 
   {Atom : Set}
   {Atom₀ : Set}
@@ -259,6 +280,7 @@ buildForAll :
 buildForAll f forA n (v ∷ vars) acc name = forA v (buildForAll f forA n vars (acc ++ v ∷ []) name)
 buildForAll f forA n [] acc name = f name n acc
 
+-- Rename head variables to fresh ones and add unification constraints
 normalize : 
   {Atom : Set}
   → {𝒞 : Set}
@@ -279,6 +301,10 @@ normalize {_}{C}{Code}{Constraint} ⦃ asat ⦄ (_:--_ hea bod ⦃ ft ⦄ ⦃ at
            ∘ maybeToList) (zipMatch asat (toNewAtom ⦃ at ⦄ hea) newHead)
            ++ Data.List.map (toNewLiteral (toNewAtom ⦃ at ⦄)) bod)
 
+-- Produce dual clauses for one rule group:
+--   - De Morgan clauses for each body literal
+--   - a forAll-clause when existential variables are present
+--   - a catch-all clause using the negated head
 computeDual : 
   {Atom : Set}
   {Atom₀ : Set}
@@ -308,6 +334,7 @@ computeDual f toNewAtom forA ((hea :-- bod) ∷ xs) =
   ((toNewAtom ∘ ASP.types.not) hea :-- (Data.List.map atom (reverse (makeTopLevelBody f hea ((suc ∘ length) xs))))) ∷ []
 computeDual _ _ _ [] = []
 
+-- Insert an element into the matching group, or start a new group
 insertGroup :
   {A B : Set} →
   (key : A → B) →
@@ -323,6 +350,7 @@ insertGroup key eq x (g ∷ gs) with head g
 ...   | true  = (x ∷ g) ∷ gs
 ...   | false = g ∷ insertGroup key eq x gs
 
+-- Partition a list into groups sharing the same key
 groupByKey :
   ∀ {A B} →
   (key : A → B) →
@@ -332,8 +360,10 @@ groupByKey :
 groupByKey key eq =
   foldr (insertGroup key eq) []
 
--- The dual rule generation algorithm
-
+-- The dual rule generation algorithm:
+--   1. Normalize all clauses (fresh head variables + unification constraints)
+--   2. Group clauses by head predicate
+--   3. Compute dual rules for each group
 computeDuals : 
   ∀ {Atom 𝒞 Code Constraint}
   → ⦃ ASPUtils Atom 𝒞 Code Constraint ⦄

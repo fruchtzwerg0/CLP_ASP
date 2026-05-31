@@ -108,7 +108,7 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
               (λ a b → abs (incrementFD n a) (incrementFD n b))
               ffalse
 
--- the streamreasoning example taken from "Constraint Answer Set Programming without Grounding"
+-- the nqueens example taken from "Computing Stable Models of Normal Logic Programs without Grounding"
 module program where
   open CLP.types
 

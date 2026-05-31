@@ -229,6 +229,7 @@ library
       MAlonzo.Code.Empty.Qdomain
       MAlonzo.Code.Examples.QgraphColoring
       MAlonzo.Code.Examples.Qhanoi
+      MAlonzo.Code.Examples.Qhanoi_without_fd
       MAlonzo.Code.Examples.QmyDomainGroup
       MAlonzo.Code.Examples.QtravelingSalesman
       MAlonzo.Code.FD.Qdomain

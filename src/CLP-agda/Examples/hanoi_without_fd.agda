@@ -50,12 +50,57 @@ data Functor : Set where
 functorD : HasDesc Functor
 functorD = deriveDesc Functor
 
--- we need to derive ftUtils for our atom type
-instance  ftUtilsFunctor : FTUtils Functor
-          ftUtilsFunctor = deriveFTUtils functorD
+-- Manual fold for Functor.
+foldFunctor :
+  ∀ {A : Set}
+  → (A → A)                                                                                          -- fnot
+  → (NatLogic → NatLogic → A)                                                                        -- hanoi
+  → (StringLogic → StringLogic → NatLogic → A)                                                       -- move
+  → (NatLogic → NatLogic → NatLogic → StringLogic → StringLogic → StringLogic → A)                   -- move0
+  → (StringLogic → StringLogic → NatLogic → A)                                                       -- negmove
+  → A                                                                                                -- ffalse
+  → Functor → A
+foldFunctor f₁ f₂ f₃ f₄ f₅ f₆ (fnot x)            = f₁ (foldFunctor f₁ f₂ f₃ f₄ f₅ f₆ x)
+foldFunctor f₁ f₂ f₃ f₄ f₅ f₆ (hanoi a b)         = f₂ a b
+foldFunctor f₁ f₂ f₃ f₄ f₅ f₆ (move a b c)        = f₃ a b c
+foldFunctor f₁ f₂ f₃ f₄ f₅ f₆ (move0 a b c d e f) = f₄ a b c d e f
+foldFunctor f₁ f₂ f₃ f₄ f₅ f₆ (negmove a b c)     = f₅ a b c
+foldFunctor f₁ f₂ f₃ f₄ f₅ f₆ ffalse              = f₆
 
--- a fold to be used for increment later.
-foldFunctor = deriveFold functorD
+-- Manual FTUtils for Functor.
+instance ftUtilsFunctor : FTUtils Functor
+
+         ftUtilsFunctor .functor (fnot x)            = functor ⦃ ftUtilsFunctor ⦄ x
+         ftUtilsFunctor .functor (hanoi _ _)         = "hanoi"
+         ftUtilsFunctor .functor (move _ _ _)        = "move"
+         ftUtilsFunctor .functor (move0 _ _ _ _ _ _) = "move0"
+         ftUtilsFunctor .functor (negmove _ _ _)     = "negmove"
+         ftUtilsFunctor .functor ffalse              = "ffalse"
+
+         ftUtilsFunctor .varName _ = nothing
+
+         ftUtilsFunctor .occurs n (fnot x)            = occurs ⦃ ftUtilsFunctor ⦄ n x
+         ftUtilsFunctor .occurs n (hanoi a b)         = occurs ⦃ ftUtilsNat ⦄ n a ∨ occurs ⦃ ftUtilsNat ⦄ n b
+         ftUtilsFunctor .occurs n (move a b c)        = occurs ⦃ ftUtilsString ⦄ n a ∨ occurs ⦃ ftUtilsString ⦄ n b ∨ occurs ⦃ ftUtilsNat ⦄ n c
+         ftUtilsFunctor .occurs n (move0 a b c d e f) =
+           occurs ⦃ ftUtilsNat ⦄ n a ∨ occurs ⦃ ftUtilsNat ⦄ n b ∨ occurs ⦃ ftUtilsNat ⦄ n c ∨
+           occurs ⦃ ftUtilsString ⦄ n d ∨ occurs ⦃ ftUtilsString ⦄ n e ∨ occurs ⦃ ftUtilsString ⦄ n f
+         ftUtilsFunctor .occurs n (negmove a b c)     = occurs ⦃ ftUtilsString ⦄ n a ∨ occurs ⦃ ftUtilsString ⦄ n b ∨ occurs ⦃ ftUtilsNat ⦄ n c
+         ftUtilsFunctor .occurs _ ffalse              = false
+
+         ftUtilsFunctor .collectVars (fnot x)            = collectVars ⦃ ftUtilsFunctor ⦄ x
+         ftUtilsFunctor .collectVars (hanoi a b)         =
+           collectVars ⦃ ftUtilsNat ⦄ a Data.List.++ collectVars ⦃ ftUtilsNat ⦄ b
+         ftUtilsFunctor .collectVars (move a b c)        =
+           collectVars ⦃ ftUtilsString ⦄ a Data.List.++ collectVars ⦃ ftUtilsString ⦄ b Data.List.++ collectVars ⦃ ftUtilsNat ⦄ c
+         ftUtilsFunctor .collectVars (move0 a b c d e f) =
+           collectVars ⦃ ftUtilsNat ⦄ a Data.List.++ collectVars ⦃ ftUtilsNat ⦄ b Data.List.++ collectVars ⦃ ftUtilsNat ⦄ c Data.List.++
+           collectVars ⦃ ftUtilsString ⦄ d Data.List.++ collectVars ⦃ ftUtilsString ⦄ e Data.List.++ collectVars ⦃ ftUtilsString ⦄ f
+         ftUtilsFunctor .collectVars (negmove a b c)     =
+           collectVars ⦃ ftUtilsString ⦄ a Data.List.++ collectVars ⦃ ftUtilsString ⦄ b Data.List.++ collectVars ⦃ ftUtilsNat ⦄ c
+         ftUtilsFunctor .collectVars ffalse              = []
+
+         ftUtilsFunctor .getNat _ = nothing
 
 -- custom validation scheme, that can be used to restrict the user from certain constructions that would typecheck.
 -- in ASP, we could use it to restrict fnot only to be used in the body, and ffalse only in the head.
@@ -106,8 +151,23 @@ instance  atomUtils : AtomUtils Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ
                 (incrementString n f))
               (λ a b c → negmove (incrementString n a) (incrementString n b) (incrementNat n c))
               ffalse
+          atomUtils .apply c₀ n z = 
+            foldFunctor 
+              fnot 
+              (λ a b → hanoi (apply valueUtils c₀ nat𝒞 n z a) (apply valueUtils c₀ nat𝒞 n z b))
+              (λ a b c → move (apply valueUtils c₀ string𝒞 n z a) (apply valueUtils c₀ string𝒞 n z b) (apply valueUtils c₀ nat𝒞 n z c))
+              (λ a b c d e f → move0 
+                (apply valueUtils c₀ nat𝒞 n z a) 
+                (apply valueUtils c₀ nat𝒞 n z b) 
+                (apply valueUtils c₀ nat𝒞 n z c) 
+                (apply valueUtils c₀ string𝒞 n z d) 
+                (apply valueUtils c₀ string𝒞 n z e) 
+                (apply valueUtils c₀ string𝒞 n z f))
+              (λ a b c → negmove (apply valueUtils c₀ string𝒞 n z a) (apply valueUtils c₀ string𝒞 n z b) (apply valueUtils c₀ nat𝒞 n z c))
+              ffalse
 
--- the streamreasoning example taken from "Constraint Answer Set Programming without Grounding"
+
+-- the Towers of Hanoi example taken from "Constraint Answer Set Programming without Grounding"
 module program where
   open CLP.types
 
@@ -139,16 +199,29 @@ module program where
     move Pi Pf T :- not (negmove Pi Pf T) •ₐ
     negmove Pi Pf T :- not (move Pi Pf T) •ₐ
 
-  question :
+  question1 :
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
-  question = 
+  question1 = 
     hanoi (suc (suc (suc (suc zero)))) (varNat 0) •ₐ
 
-  execute = (take 1 ∘ aspExecute hanoiProgram question) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
+  question2 :
+    Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  question2 = 
+    hanoi (suc (suc (suc (suc (suc zero))))) (varNat 0) •ₐ
 
+  question3 :
+    Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  question3 = 
+    hanoi (suc (suc (suc (suc (suc (suc zero)))))) (varNat 0) •ₐ
+
+  execute1 = (take 1 ∘ aspExecute hanoiProgram question1) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
+
+  execute2 = (take 1 ∘ aspExecute hanoiProgram question2) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
+
+  execute3 = (take 1 ∘ aspExecute hanoiProgram question3) (λ { (wrap (move _ _ _) _ _) → true ; _ → false })
+
+  {-# COMPILE GHC execute1 as hExecute1 #-}
   
-  {-# COMPILE GHC execute as execute #-}
+  {-# COMPILE GHC execute2 as hExecute2 #-}
   
-  real = (toIntern  ∘ proj₂ ∘ applyVars hanoiProgram) 0
-  getDuals = computeDuals real
-  getNmr = computeNMR real
+  {-# COMPILE GHC execute3 as hExecute3 #-}

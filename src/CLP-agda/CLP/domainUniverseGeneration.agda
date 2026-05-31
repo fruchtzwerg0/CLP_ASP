@@ -2,6 +2,8 @@
 
 module CLP.domainUniverseGeneration where
 
+-- Generates the universe code type and SigmaDecoder automatically
+
 open import Agda.Primitive
 open import Agda.Builtin.Nat
 open import Agda.Builtin.List
@@ -97,7 +99,6 @@ makeDecoder
   → List (Name × Name)
   → TC ⊤
 makeDecoder decName myCName consTarget = do
-  -- NO freshName here!
   let ty = pi (mkArg (def myCName []))
                (abs "_" (agda-sort (lit 0)))
   declareDef (arg argInfo decName) ty

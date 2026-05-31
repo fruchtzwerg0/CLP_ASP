@@ -55,12 +55,43 @@ data Functor : Set where
 functorD : HasDesc Functor
 functorD = deriveDesc Functor
 
--- we need to derive ftUtils for our atom type
-instance  ftUtilsFunctor : FTUtils Functor
-          ftUtilsFunctor = deriveFTUtils functorD
-
 -- a fold to be used for increment later.
 foldFunctor = deriveFold functorD
+
+-- Manual FTUtils for Functor.
+instance ftUtilsFunctor : FTUtils Functor
+
+         -- functor: textual identifier of the head constructor.
+         -- For fnot we keep the inner functor's name so display
+         -- like "not nodeColor" can be assembled by the caller
+         -- (which checks isNot separately).
+         ftUtilsFunctor .functor (fnot x)         = functor ⦃ ftUtilsFunctor ⦄ x
+         ftUtilsFunctor .functor (node _)         = "node"
+         ftUtilsFunctor .functor (edge _ _)       = "edge"
+         ftUtilsFunctor .functor (color _)        = "color"
+         ftUtilsFunctor .functor (nodeColor _ _)  = "nodeColor"
+         ftUtilsFunctor .functor (otherColor _ _) = "otherColor"
+         ftUtilsFunctor .functor ffalse           = "ffalse"
+
+         ftUtilsFunctor .varName _ = nothing
+
+         ftUtilsFunctor .occurs n (fnot x)         = occurs ⦃ ftUtilsFunctor ⦄ n x
+         ftUtilsFunctor .occurs n (node a)         = occurs ⦃ ftUtilsString ⦄ n a
+         ftUtilsFunctor .occurs n (edge a b)       = occurs ⦃ ftUtilsString ⦄ n a ∨ occurs ⦃ ftUtilsString ⦄ n b
+         ftUtilsFunctor .occurs n (color a)        = occurs ⦃ ftUtilsString ⦄ n a
+         ftUtilsFunctor .occurs n (nodeColor a b)  = occurs ⦃ ftUtilsString ⦄ n a ∨ occurs ⦃ ftUtilsString ⦄ n b
+         ftUtilsFunctor .occurs n (otherColor a b) = occurs ⦃ ftUtilsString ⦄ n a ∨ occurs ⦃ ftUtilsString ⦄ n b
+         ftUtilsFunctor .occurs _ ffalse           = false
+
+         ftUtilsFunctor .collectVars (fnot x)         = collectVars ⦃ ftUtilsFunctor ⦄ x
+         ftUtilsFunctor .collectVars (node a)         = collectVars ⦃ ftUtilsString ⦄ a
+         ftUtilsFunctor .collectVars (edge a b)       = collectVars ⦃ ftUtilsString ⦄ a Data.List.++ collectVars ⦃ ftUtilsString ⦄ b
+         ftUtilsFunctor .collectVars (color a)        = collectVars ⦃ ftUtilsString ⦄ a
+         ftUtilsFunctor .collectVars (nodeColor a b)  = collectVars ⦃ ftUtilsString ⦄ a Data.List.++ collectVars ⦃ ftUtilsString ⦄ b
+         ftUtilsFunctor .collectVars (otherColor a b) = collectVars ⦃ ftUtilsString ⦄ a Data.List.++ collectVars ⦃ ftUtilsString ⦄ b
+         ftUtilsFunctor .collectVars ffalse           = []
+
+         ftUtilsFunctor .getNat _ = nothing
 
 -- custom validation scheme
 validate : Where → Functor → Set
@@ -130,9 +161,124 @@ instance
 module program where
   open CLP.types
 
+  graphColoringInstance1 :
+    Clause Functor validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  graphColoringInstance1 = do
+    -- Nodes
+    node (~ "a") •
+    node (~ "b") •
+    node (~ "c") •
+    node (~ "d") •
+    node (~ "e") •
+
+    -- Edges
+    edge (~ "a") (~ "b") •
+    edge (~ "a") (~ "c") •
+    edge (~ "b") (~ "d") •
+    edge (~ "b") (~ "e") •
+    edge (~ "c") (~ "d") •
+    edge (~ "c") (~ "e") •
+
+  graphColoringInstance2 :
+    Clause Functor validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  graphColoringInstance2 = do
+    -- Nodes
+    node (~ "a") •
+    node (~ "b") •
+    node (~ "c") •
+    node (~ "d") •
+    node (~ "e") •
+    node (~ "f") •
+    node (~ "g") •
+    node (~ "h") •
+
+    -- Edges
+    edge (~ "a") (~ "b") •
+    edge (~ "a") (~ "c") •
+    edge (~ "a") (~ "d") •
+
+    edge (~ "b") (~ "c") •
+    edge (~ "b") (~ "e") •
+
+    edge (~ "c") (~ "f") •
+
+    edge (~ "d") (~ "e") •
+    edge (~ "d") (~ "f") •
+
+    edge (~ "e") (~ "f") •
+
+    edge (~ "e") (~ "g") •
+    edge (~ "f") (~ "h") •
+
+    edge (~ "g") (~ "h") •
+
+  graphColoringInstance3 :
+    Clause Functor validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  graphColoringInstance3 = do
+    -- Nodes
+    node (~ "a") •
+    node (~ "b") •
+    node (~ "c") •
+    node (~ "d") •
+    node (~ "e") •
+    node (~ "f") •
+    node (~ "g") •
+    node (~ "h") •
+    node (~ "i") •
+    node (~ "j") •
+    node (~ "k") •
+    node (~ "l") •
+
+    -- Clique 1 (a–d)
+    edge (~ "a") (~ "b") •
+    edge (~ "a") (~ "c") •
+    edge (~ "a") (~ "d") •
+    edge (~ "b") (~ "c") •
+    edge (~ "b") (~ "d") •
+    edge (~ "c") (~ "d") •
+
+    -- Clique 2 (e–h)
+    edge (~ "e") (~ "f") •
+    edge (~ "e") (~ "g") •
+    edge (~ "e") (~ "h") •
+    edge (~ "f") (~ "g") •
+    edge (~ "f") (~ "h") •
+    edge (~ "g") (~ "h") •
+
+    -- Clique 3 (i–l)
+    edge (~ "i") (~ "j") •
+    edge (~ "i") (~ "k") •
+    edge (~ "i") (~ "l") •
+    edge (~ "j") (~ "k") •
+    edge (~ "j") (~ "l") •
+    edge (~ "k") (~ "l") •
+
+    -- Interconnections
+    edge (~ "a") (~ "e") •
+    edge (~ "b") (~ "f") •
+    edge (~ "c") (~ "g") •
+    edge (~ "d") (~ "h") •
+
+    edge (~ "e") (~ "i") •
+    edge (~ "f") (~ "j") •
+    edge (~ "g") (~ "k") •
+    edge (~ "h") (~ "l") •
+
+    -- Cross links
+    edge (~ "b") (~ "g") •
+    edge (~ "c") (~ "j") •
+    edge (~ "f") (~ "k") •
+    edge (~ "d") (~ "i") •
+
+    edge (~ "a") (~ "l") •
+    edge (~ "h") (~ "i") •
+
   graphColoring :
     Clause Functor validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
-  graphColoring = do
+    → Clause Functor validate My𝒞 ⟦_⟧ ⟦_⟧ℒ
+  graphColoring inst = do
+    inst
+    
     X ← new
     C ← new
     C2 ← new
@@ -151,21 +297,6 @@ module program where
       nodeColor X C ∧ₐ
       nodeColor Y C •ₐ
 
-    -- Nodes
-    node (~ "a") •
-    node (~ "b") •
-    node (~ "c") •
-    node (~ "d") •
-    node (~ "e") •
-
-    -- Edges
-    edge (~ "a") (~ "b") •
-    edge (~ "a") (~ "c") •
-    edge (~ "b") (~ "d") •
-    edge (~ "b") (~ "e") •
-    edge (~ "c") (~ "d") •
-    edge (~ "c") (~ "e") •
-
     -- Colors
     color (~ "red") •
     color (~ "green") •
@@ -176,20 +307,15 @@ module program where
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question =
     nodeColor (~ "a") (varString 0) •ₐ
-  questionTest :
-    List (Literal (ASPAtom Functor My𝒞 ⟦_⟧ ⟦_⟧ℒ) My𝒞 ⟦_⟧ ⟦_⟧ℒ)
-  questionTest =
-    atom (wrap (not (otherColor (~ "a") (varString 0))) 1 ((string𝒞 :-: (~ "a")) ∷ (string𝒞 :-: varString 0) ∷ (string𝒞 :-: varString 1) ∷ [])) ∷ []
 
-  realColoring = (toIntern ∘ proj₂ ∘ applyVars graphColoring) 0
+  execute1 = (take 1 ∘ aspExecute (graphColoring graphColoringInstance1) question) (λ { (wrap (nodeColor _ _) _ _) → true ; _ → false })
 
-  execute = (take 1 ∘ aspExecute graphColoring question) (λ { (wrap (nodeColor _ _) _ _) → true ; _ → false })
+  execute2 = (take 1 ∘ aspExecute (graphColoring graphColoringInstance2) question) (λ { (wrap (nodeColor _ _) _ _) → true ; _ → false })
 
-  fExecute = (take 5 ∘ aspExecuteDirect graphColoring questionTest) (λ { (wrap (nodeColor _ _) _ _) → true ; _ → false })
+  execute3 = (take 1 ∘ aspExecute (graphColoring graphColoringInstance3) question) (λ { (wrap (nodeColor _ _) _ _) → true ; _ → false })
 
-  {-# COMPILE GHC execute as execute #-}
-
-  real = (toIntern  ∘ proj₂ ∘ applyVars graphColoring) 0
-  getDuals = computeDuals real
-  getNmr = computeNMR real
-  getOlon = findOLON real
+  {-# COMPILE GHC execute1 as gcExecute1 #-}
+  
+  {-# COMPILE GHC execute2 as gcExecute2 #-}
+  
+  {-# COMPILE GHC execute3 as gcExecute3 #-}
