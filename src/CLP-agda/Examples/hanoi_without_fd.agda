@@ -202,7 +202,7 @@ module program where
   question1 :
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
   question1 = 
-    hanoi (suc (suc (suc (suc zero)))) (varNat 0) •ₐ
+    hanoi (suc (suc (suc zero))) (varNat 0) •ₐ
 
   question2 :
     Body Functor (validate bodyOfRule) My𝒞 ⟦_⟧ ⟦_⟧ℒ
